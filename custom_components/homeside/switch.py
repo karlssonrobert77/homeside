@@ -55,6 +55,9 @@ class HomesideSwitch(SwitchEntity):
         self._config = config
         self._attr_name = f"Homeside {config['name']}"
         self._attr_unique_id = f"homeside_{variable.replace(':', '_')}"
+        self._attr_should_poll = True
+        self._attr_is_on = None
+        self._attr_available = True
         
         # Set entity category if it's a configuration switch
         if any(word in config["name"].lower() for word in ["av/på", "val", "rumsgivare"]):
@@ -63,14 +66,20 @@ class HomesideSwitch(SwitchEntity):
     @property
     def is_on(self) -> bool | None:
         """Return true if switch is on."""
-        # Read current value synchronously from cache if available
-        return None  # Will be updated by async_update
+        return self._attr_is_on
 
     async def async_update(self) -> None:
         """Fetch new state data for this switch."""
-        value = await self._client.read_point(self._variable)
-        if value is not None:
-            self._attr_is_on = bool(value)
+        try:
+            value = await self._client.read_point(self._variable)
+            if value is not None:
+                self._attr_is_on = bool(value)
+                self._attr_available = True
+            else:
+                self._attr_available = False
+        except Exception as e:
+            _LOGGER.error(f"Error updating switch {self._variable}: {e}")
+            self._attr_available = False
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""

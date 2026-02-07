@@ -77,21 +77,32 @@ class HomesideSelect(SelectEntity):
         self._attr_unique_id = f"homeside_{variable.replace(':', '_')}"
         self._attr_options = mode_def["options"]
         self._attr_entity_category = "config"
+        self._attr_should_poll = True
+        self._attr_current_option = None
+        self._attr_available = True
 
     @property
     def current_option(self) -> str | None:
         """Return the current selected option."""
-        return None  # Will be updated by async_update
+        return self._attr_current_option
 
     async def async_update(self) -> None:
         """Fetch new state data for this select."""
-        value = await self._client.read_point(self._variable)
-        if value is not None:
-            try:
-                idx = self._mode_def["values"].index(int(value))
-                self._attr_current_option = self._mode_def["options"][idx]
-            except (ValueError, IndexError):
-                self._attr_current_option = None
+        try:
+            value = await self._client.read_point(self._variable)
+            if value is not None:
+                try:
+                    idx = self._mode_def["values"].index(int(value))
+                    self._attr_current_option = self._mode_def["options"][idx]
+                    self._attr_available = True
+                except (ValueError, IndexError):
+                    self._attr_current_option = None
+                    self._attr_available = False
+            else:
+                self._attr_available = False
+        except Exception as e:
+            _LOGGER.error(f"Error updating select {self._variable}: {e}")
+            self._attr_available = False
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""

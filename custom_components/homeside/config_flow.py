@@ -14,13 +14,23 @@ class HomesideConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         if user_input is not None:
+            # If no username provided, clear password as well
+            if not user_input.get(CONF_USERNAME):
+                user_input[CONF_USERNAME] = ""
+                user_input[CONF_PASSWORD] = ""
             return self.async_create_entry(title=user_input[CONF_HOST], data=user_input)
 
         schema = vol.Schema(
             {
                 vol.Required(CONF_HOST): str,
-                vol.Optional(CONF_USERNAME, default=""): str,
-                vol.Optional(CONF_PASSWORD, default=""): str,
+                vol.Optional(CONF_USERNAME, default="", description={"suggested_value": ""}): str,
+                vol.Optional(CONF_PASSWORD, default="", description={"suggested_value": ""}): str,
             }
         )
-        return self.async_show_form(step_id="user", data_schema=schema)
+        return self.async_show_form(
+            step_id="user", 
+            data_schema=schema,
+            description_placeholders={
+                "note": "Lämna användarnamn och lösenord tomt för skrivskyddad åtkomst (read-only)"
+            }
+        )

@@ -2,12 +2,17 @@
   "config": {
     "step": {
       "user": {
-        "title": "Homeside",
-        "description": "Connect to a Homeside controller",
+        "title": "HomeSide",
+        "description": "Anslut till HomeSide-styrning. Lämna användarnamn och lösenord tomt för skrivskyddad åtkomst.",
         "data": {
-          "host": "Host",
-          "username": "Username",
-          "password": "Password"
+          "host": "IP-adress",
+          "username": "Användarnamn (valfritt)",
+          "password": "Lösenord (valfritt)"
+        },
+        "data_description": {
+          "host": "IP-adress till HomeSide-styrningen",
+          "username": "Lämna tomt för skrivskyddad åtkomst",
+          "password": "Lämna tomt för skrivskyddad åtkomst"
         }
       }
     }

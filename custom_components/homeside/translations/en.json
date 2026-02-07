@@ -2,12 +2,17 @@
   "config": {
     "step": {
       "user": {
-        "title": "Homeside",
-        "description": "Connect to a Homeside controller",
+        "title": "HomeSide",
+        "description": "Connect to HomeSide controller. Leave username and password empty for read-only access.",
         "data": {
-          "host": "Host",
-          "username": "Username",
-          "password": "Password"
+          "host": "IP Address",
+          "username": "Username (optional)",
+          "password": "Password (optional)"
+        },
+        "data_description": {
+          "host": "IP address of the HomeSide controller",
+          "username": "Leave empty for read-only access",
+          "password": "Leave empty for read-only access"
         }
       }
     }
