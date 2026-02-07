@@ -42,6 +42,7 @@ class VariableConfig:
     note: str | None = None
     access: str | None = None
     role_access: str | None = None
+    unit: str | None = None
 
 @dataclass(frozen=True, kw_only=True)
 class HomesideSensorEntityDescription(SensorEntityDescription):
@@ -150,7 +151,7 @@ async def async_setup_entry(
 
             await variables_coordinator.async_refresh()
             entities.extend(
-                HomesideVariableSensor(variables_coordinator, cfg.name)
+                HomesideVariableSensor(variables_coordinator, cfg)
                 for cfg in group_configs
             )
     
@@ -206,11 +207,14 @@ class HomesideVariableSensor(SensorEntity):
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
-        name: str,
+        config: VariableConfig,
     ) -> None:
         self._coordinator = coordinator
-        self._name = name
-        self._attr_unique_id = f"homeside_var_{name}"
+        self._config = config
+        self._name = config.name
+        self._attr_unique_id = f"homeside_var_{config.address.replace(':', '_')}"
+        if config.unit:
+            self._attr_native_unit_of_measurement = config.unit
 
     @property
     def name(self) -> str | None:
@@ -224,16 +228,16 @@ class HomesideVariableSensor(SensorEntity):
     def native_value(self) -> Any:
         data = self._coordinator.data or {}
         values = data.get("values", {})
-        return values.get(self._name)
+        return values.get(self._config.address)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         data = self._coordinator.data or {}
         errors = data.get("errors", {})
-        info = errors.get(self._name)
-        note = (data.get("notes", {}) or {}).get(self._name)
-        access = (data.get("access", {}) or {}).get(self._name)
-        role_access = (data.get("role_access", {}) or {}).get(self._name)
+        info = errors.get(self._config.address)
+        note = (data.get("notes", {}) or {}).get(self._config.address)
+        access = (data.get("access", {}) or {}).get(self._config.address)
+        role_access = (data.get("role_access", {}) or {}).get(self._config.address)
         extra: dict[str, Any] = {}
         if note:
             extra["note"] = note

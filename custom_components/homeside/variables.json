@@ -23,7 +23,8 @@
       "name": "VV1_GT_TAPP (tappvarmvatten)",
       "note": "48.96655",
       "access": "read",
-      "role_access": "Guest"
+      "role_access": "Guest",
+      "unit": "°C"
     },
     "0:12": {
       "enabled": false,
@@ -182,7 +183,8 @@
       "name": "Expansionskärl tryckgivare (bar)",
       "note": "Value_GP_EXP1_1",
       "access": "read",
-      "role_access": "Guest"
+      "role_access": "Guest",
+      "unit": "bar"
     },
     "0:142": {
       "enabled": true,
@@ -626,7 +628,8 @@
       "name": "VS1_GT11 (framledning)",
       "note": "52.31913",
       "access": "read",
-      "role_access": "Guest"
+      "role_access": "Guest",
+      "unit": "°C"
     },
     "0:349": {
       "enabled": false,
@@ -666,7 +669,8 @@
       "name": "Mottagning rum 1 (dB)",
       "note": "Value_MOTTAGNING_RUM_1",
       "access": "read",
-      "role_access": "Guest"
+      "role_access": "Guest",
+      "unit": "dB"
     },
     "0:407": {
       "enabled": false,
@@ -794,7 +798,8 @@
       "name": "VS1_GT_RETUR (retur)",
       "note": "38.79363",
       "access": "read",
-      "role_access": "Guest"
+      "role_access": "Guest",
+      "unit": "°C"
     },
     "0:449": {
       "enabled": false,
@@ -1058,7 +1063,8 @@
       "name": "VS1 framledning extra givare (temp)",
       "note": "VS1_GT11_2 (°C)",
       "access": "read",
-      "role_access": "Guest"
+      "role_access": "Guest",
+      "unit": "°C"
     },
     "0:580": {
       "enabled": false,
@@ -1210,7 +1216,8 @@
       "name": "Trådlös utegivare mottagning (RSSI)",
       "note": "Value_Rum_2/Value_Rss127",
       "access": "read",
-      "role_access": "Guest"
+      "role_access": "Guest",
+      "unit": "dB"
     },
     "0:645": {
       "enabled": false,
