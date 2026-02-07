@@ -1,12 +1,12 @@
 {
   "domain": "homeside",
   "name": "HomeSide",
-  "version": "1.0.0",
-  "documentation": "https://github.com/yourusername/homeside",
-  "issue_tracker": "https://github.com/yourusername/homeside/issues",
+  "version": "1.0.1",
+  "documentation": "https://github.com/karlssonrobert77/homeside",
+  "issue_tracker": "https://github.com/karlssonrobert77/homeside/issues",
   "requirements": ["pycryptodome>=3.20.0"],
   "dependencies": ["http"],
-  "codeowners": ["karlssonrobert77@gmail.com"],
+  "codeowners": ["@karlssonrobert77"],
   "config_flow": true,
   "iot_class": "local_polling"
 }
