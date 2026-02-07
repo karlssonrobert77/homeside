@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp files
+.tmp/
+*.log
+
+# Development
+test_credentials.py
+test_enabled_vars.py
+test_write_capability.py
+tools/artifacts/
+
+*.md
+
+# Documentation (keep in repo)
+!README.md
+!LICENSE
+!hacs.json
