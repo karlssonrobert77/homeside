@@ -69,8 +69,8 @@ class HomesideClient:
             self._ws = await self._session.ws_connect(
                 self.ws_url,
                 protocols=["EXOsocket"],
-                heartbeat=30,
-                receive_timeout=10,
+                heartbeat=60,
+                receive_timeout=None,
             )
             await self._send_json(
                 {
