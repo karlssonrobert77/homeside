@@ -109,8 +109,9 @@ class HomesideClient:
             self._ws = None
 
     async def ping(self) -> None:
-        await self._send_json({"method": "ping"})
-        await self._await_method("pingAck")
+        async with self._lock:
+            await self._send_json({"method": "ping"})
+            await self._await_method("pingAck")
 
     async def login(self, username: str, password: str) -> None:
         self._client_nonce1 = self._swap_end(self._rand_u32())
@@ -176,20 +177,21 @@ class HomesideClient:
         if not variables:
             return {}, {}
 
-        objects = self._build_read_objects(variables)
-        pending_contexts: set[int] = set()
-        for obj in objects:
-            context = self._next_context(advise=advise)
-            pending_contexts.add(context)
-            await self._send_json(self._build_read_message(context, obj))
+        async with self._lock:
+            objects = self._build_read_objects(variables)
+            pending_contexts: set[int] = set()
+            for obj in objects:
+                context = self._next_context(advise=advise)
+                pending_contexts.add(context)
+                await self._send_json(self._build_read_message(context, obj))
 
-        updates = await self._await_updates(pending_contexts)
-        values: dict[str, Any] = {}
-        errors: dict[str, dict[str, Any]] = {}
-        for payload in updates.values():
-            values.update(payload.get("values", {}))
-            errors.update(payload.get("errors", {}))
-        return values, errors
+            updates = await self._await_updates(pending_contexts)
+            values: dict[str, Any] = {}
+            errors: dict[str, dict[str, Any]] = {}
+            for payload in updates.values():
+                values.update(payload.get("values", {}))
+                errors.update(payload.get("errors", {}))
+            return values, errors
 
     async def write_point(self, variable: str, value: float | int) -> bool:
         """Write a single value to a device point.
@@ -215,49 +217,50 @@ class HomesideClient:
         except ValueError:
             raise ValueError(f"Invalid variable address: {variable}")
         
-        context = self._next_context(advise=False)
-        
-        # Build write message
-        message = {
-            "method": "write",
-            "context": context,
-            "params": {
-                "kind": "indexedPoints",
-                "devices": [
-                    {
-                        "device": device,
-                        "items": [item],
-                        "values": [value]
-                    }
-                ]
+        async with self._lock:
+            context = self._next_context(advise=False)
+            
+            # Build write message
+            message = {
+                "method": "write",
+                "context": context,
+                "params": {
+                    "kind": "indexedPoints",
+                    "devices": [
+                        {
+                            "device": device,
+                            "items": [item],
+                            "values": [value]
+                        }
+                    ]
+                }
             }
-        }
-        
-        _LOGGER.info("Writing %s = %s", variable, value)
-        await self._send_json(message)
-        
-        # Wait for write confirmation
-        try:
-            updates = await self._await_updates({context}, timeout=5.0)
-            result = updates.get(context, {})
-            errors = result.get("errors", {})
             
-            if variable in errors:
-                error_info = errors[variable]
-                _LOGGER.error(
-                    "Write failed for %s: %s (%s)",
-                    variable,
-                    error_info.get("code"),
-                    error_info.get("text")
-                )
+            _LOGGER.info("Writing %s = %s", variable, value)
+            await self._send_json(message)
+            
+            # Wait for write confirmation
+            try:
+                updates = await self._await_updates({context}, timeout=5.0)
+                result = updates.get(context, {})
+                errors = result.get("errors", {})
+                
+                if variable in errors:
+                    error_info = errors[variable]
+                    _LOGGER.error(
+                        "Write failed for %s: %s (%s)",
+                        variable,
+                        error_info.get("code"),
+                        error_info.get("text")
+                    )
+                    return False
+                
+                _LOGGER.info("Write successful for %s", variable)
+                return True
+                
+            except TimeoutError:
+                _LOGGER.error("Write timeout for %s", variable)
                 return False
-            
-            _LOGGER.info("Write successful for %s", variable)
-            return True
-            
-        except TimeoutError:
-            _LOGGER.error("Write timeout for %s", variable)
-            return False
 
     async def _send_json(self, payload: dict[str, Any]) -> None:
         if not self._ws or self._ws.closed:
