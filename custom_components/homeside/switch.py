@@ -1,7 +1,9 @@
 """Support for Homeside switches."""
 from __future__ import annotations
 
+import json
 import logging
+from pathlib import Path
 from typing import Any
 from datetime import timedelta
 
@@ -18,6 +20,19 @@ from .client import HomesideClient
 from .const import DOMAIN, UPDATE_INTERVAL_NORMAL
 
 _LOGGER = logging.getLogger(__name__)
+_VARIABLES_FILE = Path(__file__).resolve().parent / "variables.json"
+
+
+def _load_variables() -> dict[str, dict]:
+    """Load variables from variables.json."""
+    if not _VARIABLES_FILE.exists():
+        return {}
+    try:
+        raw = json.loads(_VARIABLES_FILE.read_text(encoding="utf-8"))
+        return raw.get("mapping", {})
+    except (OSError, json.JSONDecodeError) as exc:
+        _LOGGER.warning("Failed to read variables mapping: %s", exc)
+        return {}
 
 
 async def async_setup_entry(
@@ -28,9 +43,11 @@ async def async_setup_entry(
     """Set up Homeside switches from a config entry."""
     client: HomesideClient = hass.data[DOMAIN][entry.entry_id]["client"]
 
+    variables = _load_variables()
+    
     # Get all boolean writable variables that are enabled
     switch_variables = []
-    for variable, config in client.variables.items():
+    for variable, config in variables.items():
         if (
             config.get("enabled")
             and config.get("access") == "read_write"

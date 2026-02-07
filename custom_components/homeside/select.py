@@ -1,7 +1,9 @@
 """Support for Homeside select entities."""
 from __future__ import annotations
 
+import json
 import logging
+from pathlib import Path
 from typing import Any
 from datetime import timedelta
 
@@ -18,6 +20,7 @@ from .client import HomesideClient
 from .const import DOMAIN, UPDATE_INTERVAL_NORMAL
 
 _LOGGER = logging.getLogger(__name__)
+_VARIABLES_FILE = Path(__file__).resolve().parent / "variables.json"
 
 # Mode definitions for pumps and valves
 MODE_DEFINITIONS = {
@@ -44,6 +47,18 @@ MODE_DEFINITIONS = {
 }
 
 
+def _load_variables() -> dict[str, dict]:
+    """Load variables from variables.json."""
+    if not _VARIABLES_FILE.exists():
+        return {}
+    try:
+        raw = json.loads(_VARIABLES_FILE.read_text(encoding="utf-8"))
+        return raw.get("mapping", {})
+    except (OSError, json.JSONDecodeError) as exc:
+        _LOGGER.warning("Failed to read variables mapping: %s", exc)
+        return {}
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -52,10 +67,12 @@ async def async_setup_entry(
     """Set up Homeside selects from a config entry."""
     client: HomesideClient = hass.data[DOMAIN][entry.entry_id]["client"]
 
+    variables = _load_variables()
+    
     # Create select entities for mode variables
     select_variables = []
     for variable, mode_def in MODE_DEFINITIONS.items():
-        config = client.variables.get(variable)
+        config = variables.get(variable)
         if config and config.get("enabled"):
             select_variables.append((variable, config, mode_def))
 
