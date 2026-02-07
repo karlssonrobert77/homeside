@@ -34,7 +34,7 @@ Thumbs.db
 test_credentials.py
 test_enabled_vars.py
 test_write_capability.py
-tools/artifacts/
+tools/
 
 *.md
 
