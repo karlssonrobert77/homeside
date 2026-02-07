@@ -9,9 +9,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import HomesideDataUpdateCoordinator
+from .client import HomesideClient
 from .const import DOMAIN
-from .entity import HomesideEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,48 +45,53 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Homeside selects from a config entry."""
-    coordinator: HomesideDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    client: HomesideClient = hass.data[DOMAIN][entry.entry_id]["client"]
 
     # Create select entities for mode variables
     entities = []
     for variable, mode_def in MODE_DEFINITIONS.items():
-        config = coordinator.client.variables.get(variable)
+        config = client.variables.get(variable)
         if config and config.get("enabled"):
-            entities.append(HomesideSelect(coordinator, variable, config, mode_def))
+            entities.append(HomesideSelect(client, variable, config, mode_def))
 
     async_add_entities(entities)
     _LOGGER.info(f"Added {len(entities)} Homeside select entities")
 
 
-class HomesideSelect(HomesideEntity, SelectEntity):
+class HomesideSelect(SelectEntity):
     """Representation of a Homeside select entity (mode selector)."""
 
     def __init__(
         self,
-        coordinator: HomesideDataUpdateCoordinator,
+        client: HomesideClient,
         variable: str,
         config: dict[str, Any],
         mode_def: dict[str, list],
     ) -> None:
         """Initialize the select entity."""
-        super().__init__(coordinator, variable, config)
+        self._client = client
+        self._variable = variable
+        self._config = config
         self._mode_def = mode_def
+        self._attr_name = f"Homeside {config['name']}"
+        self._attr_unique_id = f"homeside_{variable.replace(':', '_')}"
         self._attr_options = mode_def["options"]
         self._attr_entity_category = "config"
 
     @property
     def current_option(self) -> str | None:
         """Return the current selected option."""
-        value = self.coordinator.data.get(self._variable)
-        if value is None:
-            return None
-        
-        # Map numeric value to option string
-        try:
-            idx = self._mode_def["values"].index(int(value))
-            return self._mode_def["options"][idx]
-        except (ValueError, IndexError):
-            return None
+        return None  # Will be updated by async_update
+
+    async def async_update(self) -> None:
+        """Fetch new state data for this select."""
+        value = await self._client.read_point(self._variable)
+        if value is not None:
+            try:
+                idx = self._mode_def["values"].index(int(value))
+                self._attr_current_option = self._mode_def["options"][idx]
+            except (ValueError, IndexError):
+                self._attr_current_option = None
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
@@ -95,8 +99,7 @@ class HomesideSelect(HomesideEntity, SelectEntity):
             idx = self._mode_def["options"].index(option)
             value = self._mode_def["values"][idx]
             
-            success = await self.coordinator.client.write_point(self._variable, value)
-            if success:
-                await self.coordinator.async_request_refresh()
+            await self._client.write_point(self._variable, value)
+            await self.async_update()
         except ValueError:
             _LOGGER.error(f"Invalid option {option} for {self._variable}")

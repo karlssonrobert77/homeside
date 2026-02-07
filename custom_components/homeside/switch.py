@@ -9,9 +9,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import HomesideDataUpdateCoordinator
+from .client import HomesideClient
 from .const import DOMAIN
-from .entity import HomesideEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,36 +21,40 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Homeside switches from a config entry."""
-    coordinator: HomesideDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    client: HomesideClient = hass.data[DOMAIN][entry.entry_id]["client"]
 
     # Get all boolean writable variables that are enabled
     entities = []
-    for variable, config in coordinator.client.variables.items():
+    for variable, config in client.variables.items():
         if (
             config.get("enabled")
             and config.get("access") == "read_write"
             and config.get("type") in ["switch", "sensor"]  # Booleans are sensors
         ):
             # Check if it's a boolean by reading the value
-            value = coordinator.data.get(variable)
+            value = await client.read_point(variable)
             if isinstance(value, bool):
-                entities.append(HomesideSwitch(coordinator, variable, config))
+                entities.append(HomesideSwitch(client, variable, config))
 
     async_add_entities(entities)
     _LOGGER.info(f"Added {len(entities)} Homeside switches")
 
 
-class HomesideSwitch(HomesideEntity, SwitchEntity):
+class HomesideSwitch(SwitchEntity):
     """Representation of a Homeside switch."""
 
     def __init__(
         self,
-        coordinator: HomesideDataUpdateCoordinator,
+        client: HomesideClient,
         variable: str,
         config: dict[str, Any],
     ) -> None:
         """Initialize the switch."""
-        super().__init__(coordinator, variable, config)
+        self._client = client
+        self._variable = variable
+        self._config = config
+        self._attr_name = f"Homeside {config['name']}"
+        self._attr_unique_id = f"homeside_{variable.replace(':', '_')}"
         
         # Set entity category if it's a configuration switch
         if any(word in config["name"].lower() for word in ["av/på", "val", "rumsgivare"]):
@@ -60,19 +63,21 @@ class HomesideSwitch(HomesideEntity, SwitchEntity):
     @property
     def is_on(self) -> bool | None:
         """Return true if switch is on."""
-        value = self.coordinator.data.get(self._variable)
-        if value is None:
-            return None
-        return bool(value)
+        # Read current value synchronously from cache if available
+        return None  # Will be updated by async_update
+
+    async def async_update(self) -> None:
+        """Fetch new state data for this switch."""
+        value = await self._client.read_point(self._variable)
+        if value is not None:
+            self._attr_is_on = bool(value)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        success = await self.coordinator.client.write_point(self._variable, True)
-        if success:
-            await self.coordinator.async_request_refresh()
+        await self._client.write_point(self._variable, True)
+        await self.async_update()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        success = await self.coordinator.client.write_point(self._variable, False)
-        if success:
-            await self.coordinator.async_request_refresh()
+        await self._client.write_point(self._variable, False)
+        await self.async_update()
