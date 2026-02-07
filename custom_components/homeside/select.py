@@ -3,14 +3,19 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from datetime import timedelta
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+)
 
 from .client import HomesideClient
-from .const import DOMAIN
+from .const import DOMAIN, UPDATE_INTERVAL_NORMAL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,28 +53,59 @@ async def async_setup_entry(
     client: HomesideClient = hass.data[DOMAIN][entry.entry_id]["client"]
 
     # Create select entities for mode variables
-    entities = []
+    select_variables = []
     for variable, mode_def in MODE_DEFINITIONS.items():
         config = client.variables.get(variable)
         if config and config.get("enabled"):
-            entities.append(HomesideSelect(client, variable, config, mode_def))
+            select_variables.append((variable, config, mode_def))
+
+    if not select_variables:
+        return
+
+    # Create coordinator for select updates
+    async def _update() -> dict[str, Any]:
+        await client.ensure_connected()
+        data = {}
+        for variable, _, _ in select_variables:
+            try:
+                value = await client.read_point(variable)
+                if value is not None:
+                    data[variable] = value
+            except Exception as e:
+                _LOGGER.debug(f"Error reading {variable}: {e}")
+        return data
+
+    coordinator = DataUpdateCoordinator(
+        hass,
+        _LOGGER,
+        name="homeside_selects",
+        update_method=_update,
+        update_interval=timedelta(seconds=UPDATE_INTERVAL_NORMAL),
+    )
+
+    await coordinator.async_config_entry_first_refresh()
+
+    entities = [
+        HomesideSelect(coordinator, variable, config, mode_def)
+        for variable, config, mode_def in select_variables
+    ]
 
     async_add_entities(entities)
     _LOGGER.info(f"Added {len(entities)} Homeside select entities")
 
 
-class HomesideSelect(SelectEntity):
+class HomesideSelect(CoordinatorEntity, SelectEntity):
     """Representation of a Homeside select entity (mode selector)."""
 
     def __init__(
         self,
-        client: HomesideClient,
+        coordinator: DataUpdateCoordinator,
         variable: str,
         config: dict[str, Any],
         mode_def: dict[str, list],
     ) -> None:
         """Initialize the select entity."""
-        self._client = client
+        super().__init__(coordinator)
         self._variable = variable
         self._config = config
         self._mode_def = mode_def
@@ -77,32 +113,20 @@ class HomesideSelect(SelectEntity):
         self._attr_unique_id = f"homeside_{variable.replace(':', '_')}"
         self._attr_options = mode_def["options"]
         self._attr_entity_category = "config"
-        self._attr_should_poll = True
-        self._attr_current_option = None
-        self._attr_available = True
 
     @property
     def current_option(self) -> str | None:
         """Return the current selected option."""
-        return self._attr_current_option
-
-    async def async_update(self) -> None:
-        """Fetch new state data for this select."""
+        value = self.coordinator.data.get(self._variable)
+        if value is None:
+            return None
+        
+        # Map numeric value to option string
         try:
-            value = await self._client.read_point(self._variable)
-            if value is not None:
-                try:
-                    idx = self._mode_def["values"].index(int(value))
-                    self._attr_current_option = self._mode_def["options"][idx]
-                    self._attr_available = True
-                except (ValueError, IndexError):
-                    self._attr_current_option = None
-                    self._attr_available = False
-            else:
-                self._attr_available = False
-        except Exception as e:
-            _LOGGER.error(f"Error updating select {self._variable}: {e}")
-            self._attr_available = False
+            idx = self._mode_def["values"].index(int(value))
+            return self._mode_def["options"][idx]
+        except (ValueError, IndexError):
+            return None
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
@@ -110,7 +134,8 @@ class HomesideSelect(SelectEntity):
             idx = self._mode_def["options"].index(option)
             value = self._mode_def["values"][idx]
             
-            await self._client.write_point(self._variable, value)
-            await self.async_update()
+            await self.coordinator.client.write_point(self._variable, value)
+            await self.coordinator.async_request_refresh()
         except ValueError:
             _LOGGER.error(f"Invalid option {option} for {self._variable}")
+
