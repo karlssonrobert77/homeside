@@ -1,7 +1,9 @@
 {
   "name": "HomeSide",
-  "content_in_root": false,
-  "filename": "homeside",
   "render_readme": true,
-  "homeassistant": "2024.1.0"
+  "zip_release": false,
+  "country": ["SE"],
+  "homeassistant": "2024.1.0",
+  "content_in_root": false,
+  "domains": ["sensor", "binary_sensor", "number", "switch", "select"]
 }
