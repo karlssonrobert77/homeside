@@ -1,10 +1,45 @@
 # HomeSide för Home Assistant
 
-Integration för HomeSide-värmesystem. Övervakning via WebSocket.
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![GitHub Release](https://img.shields.io/github/release/karlssonrobert77/homeside.svg)](https://github.com/karlssonrobert77/homeside/releases)
 
-Lägg till i HACS → Installera → Ange IP-adress.
+Integration för HomeSide-värmesystem med WebSocket-kommunikation.
 
-- `sensor.homeside_tappvv` - Hot water temperature
+## ✨ Funktioner
+
+- 📊 **55+ sensorer** - Temperaturer, tryck, status
+- 🔘 **21 binary sensorer** - Status on/off
+- 🎚️ **18 switches** - Kontroll av system
+- 🔀 **4 select** - Välj driftlägen (Auto/Manuell)
+- 📱 **Device grouping** - Alla entities under en enhet
+- ⚡ **Realtidsuppdatering** - WebSocket med smart intervall
+
+## 📦 Installation
+
+### Via HACS (Rekommenderat)
+
+1. Öppna HACS i Home Assistant
+2. Gå till "Integrationer"
+3. Klicka "+" och sök efter "HomeSide"
+4. Klicka "Installera"
+5. Starta om Home Assistant
+
+### Manuell Installation
+
+1. Kopiera `custom_components/homeside` till din Home Assistant `config/custom_components/`
+2. Starta om Home Assistant
+
+## ⚙️ Konfiguration
+
+1. Gå till **Inställningar** → **Enheter & tjänster**
+2. Klicka **+ Lägg till integration**
+3. Sök efter **HomeSide**
+4. Ange IP-adressen till din HomeSide-enhet
+5. Klicka **Skicka**
+
+## 📊 Entities
+
+### Temperatursensorer
 - `sensor.homeside_vs1_framledning` - VS1 supply temperature
 - `sensor.homeside_vs1_retur` - VS1 return temperature
 - `sensor.homeside_utetemperatur` - Outdoor temperature
