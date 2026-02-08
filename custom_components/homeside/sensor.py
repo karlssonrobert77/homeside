@@ -43,6 +43,7 @@ class VariableConfig:
     access: str | None = None
     role_access: str | None = None
     unit: str | None = None
+    device_class: str | None = None
 
 @dataclass(frozen=True, kw_only=True)
 class HomesideSensorEntityDescription(SensorEntityDescription):
@@ -215,6 +216,8 @@ class HomesideVariableSensor(SensorEntity):
         self._attr_unique_id = f"homeside_var_{config.address.replace(':', '_')}"
         if config.unit:
             self._attr_native_unit_of_measurement = config.unit
+        if config.device_class:
+            self._attr_device_class = config.device_class
 
     @property
     def name(self) -> str | None:
@@ -321,6 +324,8 @@ def _load_variable_configs() -> list[VariableConfig]:
         note = info.get("note")
         access = info.get("access")
         role_access = info.get("role_access") or default_role_access
+        unit = info.get("unit")
+        device_class = info.get("device_class")
         configs.append(
             VariableConfig(
                 address=address,
@@ -330,6 +335,8 @@ def _load_variable_configs() -> list[VariableConfig]:
                 note=note,
                 access=access,
                 role_access=role_access,
+                unit=unit,
+                device_class=device_class,
             )
         )
     return configs

@@ -24,7 +24,8 @@
       "note": "48.96655",
       "access": "read",
       "role_access": "Guest",
-      "unit": "°C"
+      "unit": "°C",
+      "device_class": "temperature"
     },
     "0:12": {
       "enabled": false,
@@ -184,7 +185,8 @@
       "note": "Value_GP_EXP1_1",
       "access": "read",
       "role_access": "Guest",
-      "unit": "bar"
+      "unit": "bar",
+      "device_class": "pressure"
     },
     "0:142": {
       "enabled": true,
@@ -488,7 +490,8 @@
       "note": "Antal grader +/- för parallellförskjutning av kurva",
       "access": "read_write",
       "role_access": "Service",
-      "unit": "°C"
+      "unit": "°C",
+      "device_class": "temperature"
     },
     "0:274": {
       "enabled": true,
@@ -630,7 +633,8 @@
       "note": "52.31913",
       "access": "read",
       "role_access": "Guest",
-      "unit": "°C"
+      "unit": "°C",
+      "device_class": "temperature"
     },
     "0:349": {
       "enabled": false,
@@ -671,7 +675,8 @@
       "note": "Value_MOTTAGNING_RUM_1",
       "access": "read",
       "role_access": "Guest",
-      "unit": "dB"
+      "unit": "dB",
+      "device_class": "signal_strength"
     },
     "0:407": {
       "enabled": false,
@@ -800,7 +805,8 @@
       "note": "38.79363",
       "access": "read",
       "role_access": "Guest",
-      "unit": "°C"
+      "unit": "°C",
+      "device_class": "temperature"
     },
     "0:449": {
       "enabled": false,
@@ -1105,7 +1111,8 @@
       "note": "VS1_GT11_2 (°C)",
       "access": "read",
       "role_access": "Guest",
-      "unit": "°C"
+      "unit": "°C",
+      "device_class": "temperature"
     },
     "0:580": {
       "enabled": false,
@@ -1268,7 +1275,8 @@
       "note": "Value_Rum_2/Value_Rss127",
       "access": "read",
       "role_access": "Guest",
-      "unit": "dB"
+      "unit": "dB",
+      "device_class": "signal_strength"
     },
     "0:645": {
       "enabled": false,
