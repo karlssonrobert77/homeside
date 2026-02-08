@@ -16,21 +16,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     session = async_get_clientsession(hass)
     client = HomesideClient(host, session, username=username, password=password)
     await client.connect()
-
-    # Get device info from client
-    controller = await client.read_point("0:648")  # ExoReal version major
-    project = await client.read_point("0:651")  # ExoReal version product
-    duc_version = await client.read_point("0:274")  # DUC version
     
     # Create device in device registry
     device_registry = dr.async_get(hass)
-    device = device_registry.async_get_or_create(
+    device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, entry.entry_id)},
         name="HomeSide Värmesystem",
         manufacturer="HomeSide",
-        model=f"ExoReal {controller or 'Unknown'}",
-        sw_version=duc_version or "Unknown",
+        model="HomeSide Controller",
         configuration_url=f"http://{host}",
     )
 
