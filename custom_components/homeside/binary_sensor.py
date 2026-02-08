@@ -138,6 +138,12 @@ class HomesideVariableBinarySensor(BinarySensorEntity):
         self._name = name
         self._device_id = device_id
         self._attr_unique_id = f"homeside_var_{name}"
+        
+        # Set entity category based on binary sensor type
+        name_lower = name.lower()
+        if any(word in name_lower for word in ['val', 'status']):
+            # Configuration switches (selection of sensors/modes)
+            self._attr_entity_category = "config"
 
     @property
     def name(self) -> str | None:

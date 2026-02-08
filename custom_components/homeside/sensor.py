@@ -181,6 +181,7 @@ async def async_setup_entry(
 
 class HomesideIdentitySensor(SensorEntity):
     _attr_has_entity_name = True
+    _attr_entity_category = "diagnostic"
 
     def __init__(
         self,
@@ -230,6 +231,11 @@ class HomesideVariableSensor(SensorEntity):
             self._attr_native_unit_of_measurement = config.unit
         if config.device_class:
             self._attr_device_class = config.device_class
+        
+        # Set entity category based on sensor type
+        name_lower = config.name.lower()
+        if any(word in name_lower for word in ['version', 'rssi', 'mottagning']):
+            self._attr_entity_category = "diagnostic"
 
     @property
     def name(self) -> str | None:
