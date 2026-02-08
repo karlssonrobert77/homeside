@@ -48,6 +48,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     client: HomesideClient = hass.data[DOMAIN][entry.entry_id]["client"]
+    device_id = hass.data[DOMAIN][entry.entry_id]["device_id"]
 
     variable_configs = _load_variable_configs()
     binary_configs = [cfg for cfg in variable_configs if cfg.enabled and cfg.type == "binary_sensor"]
@@ -117,7 +118,7 @@ async def async_setup_entry(
 
         await variables_coordinator.async_refresh()
         entities.extend(
-            HomesideVariableBinarySensor(variables_coordinator, cfg.name)
+            HomesideVariableBinarySensor(variables_coordinator, cfg.name, device_id)
             for cfg in group_configs
         )
     
@@ -131,14 +132,23 @@ class HomesideVariableBinarySensor(BinarySensorEntity):
         self,
         coordinator: DataUpdateCoordinator,
         name: str,
+        device_id: str,
     ) -> None:
         self._coordinator = coordinator
         self._name = name
+        self._device_id = device_id
         self._attr_unique_id = f"homeside_var_{name}"
 
     @property
     def name(self) -> str | None:
         return self._name
+
+    @property
+    def device_info(self):
+        from .const import DOMAIN
+        return {
+            "identifiers": {(DOMAIN, self._device_id)},
+        }
 
     @property
     def available(self) -> bool:

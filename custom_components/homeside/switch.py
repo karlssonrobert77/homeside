@@ -42,6 +42,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up Homeside switches from a config entry."""
     client: HomesideClient = hass.data[DOMAIN][entry.entry_id]["client"]
+    device_id = hass.data[DOMAIN][entry.entry_id]["device_id"]
 
     variables = _load_variables()
     
@@ -85,7 +86,7 @@ async def async_setup_entry(
     await coordinator.async_config_entry_first_refresh()
 
     entities = [
-        HomesideSwitch(coordinator, client, variable, config)
+        HomesideSwitch(coordinator, client, device_id, variable, config)
         for variable, config in switch_variables
     ]
 
@@ -100,12 +101,14 @@ class HomesideSwitch(CoordinatorEntity, SwitchEntity):
         self,
         coordinator: DataUpdateCoordinator,
         client: HomesideClient,
+        device_id: str,
         variable: str,
         config: dict[str, Any],
     ) -> None:
         """Initialize the switch."""
         super().__init__(coordinator)
         self._client = client
+        self._device_id = device_id
         self._variable = variable
         self._config = config
         self._name = config['name']
@@ -115,6 +118,13 @@ class HomesideSwitch(CoordinatorEntity, SwitchEntity):
         # Set entity category if it's a configuration switch
         if any(word in config["name"].lower() for word in ["av/på", "val", "rumsgivare"]):
             self._attr_entity_category = "config"
+
+    @property
+    def device_info(self):
+        from .const import DOMAIN
+        return {
+            "identifiers": {(DOMAIN, self._device_id)},
+        }
 
     @property
     def is_on(self) -> bool | None:

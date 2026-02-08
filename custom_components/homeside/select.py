@@ -42,6 +42,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up Homeside selects from a config entry."""
     client: HomesideClient = hass.data[DOMAIN][entry.entry_id]["client"]
+    device_id = hass.data[DOMAIN][entry.entry_id]["device_id"]
 
     variables = _load_variables()
     
@@ -82,7 +83,7 @@ async def async_setup_entry(
     await coordinator.async_config_entry_first_refresh()
 
     entities = [
-        HomesideSelect(coordinator, client, variable, config)
+        HomesideSelect(coordinator, client, device_id, variable, config)
         for variable, config in select_variables
     ]
 
@@ -97,12 +98,14 @@ class HomesideSelect(CoordinatorEntity, SelectEntity):
         self,
         coordinator: DataUpdateCoordinator,
         client: HomesideClient,
+        device_id: str,
         variable: str,
         config: dict[str, Any],
     ) -> None:
         """Initialize the select entity."""
         super().__init__(coordinator)
         self._client = client
+        self._device_id = device_id
         self._variable = variable
         self._config = config
         self._name = config['name']
@@ -110,6 +113,13 @@ class HomesideSelect(CoordinatorEntity, SelectEntity):
         self._attr_unique_id = f"homeside_{variable.replace(':', '_')}"
         self._attr_options = config["options"]
         self._attr_entity_category = "config"
+
+    @property
+    def device_info(self):
+        from .const import DOMAIN
+        return {
+            "identifiers": {(DOMAIN, self._device_id)},
+        }
 
     @property
     def current_option(self) -> str | None:

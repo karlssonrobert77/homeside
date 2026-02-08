@@ -63,6 +63,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     client: HomesideClient = hass.data[DOMAIN][entry.entry_id]["client"]
+    device_id = hass.data[DOMAIN][entry.entry_id]["device_id"]
 
     async def _update() -> dict[str, Any]:
         await client.ensure_connected()
@@ -84,7 +85,7 @@ async def async_setup_entry(
 
     await coordinator.async_refresh()
     entities: list[SensorEntity] = [
-        HomesideIdentitySensor(coordinator, description) for description in SENSORS
+        HomesideIdentitySensor(coordinator, description, device_id) for description in SENSORS
     ]
 
     variable_configs = _load_variable_configs()
@@ -152,7 +153,7 @@ async def async_setup_entry(
 
             await variables_coordinator.async_refresh()
             entities.extend(
-                HomesideVariableSensor(variables_coordinator, cfg)
+                HomesideVariableSensor(variables_coordinator, cfg, device_id)
                 for cfg in group_configs
             )
     
@@ -171,7 +172,7 @@ async def async_setup_entry(
     
     await diagnostic_coordinator.async_refresh()
     entities.extend(
-        HomesideDiagnosticSensor(diagnostic_coordinator, sensor_key, sensor_config)
+        HomesideDiagnosticSensor(diagnostic_coordinator, sensor_key, sensor_config, device_id)
         for sensor_key, sensor_config in DIAGNOSTIC_SENSORS.items()
     )
 
@@ -185,10 +186,19 @@ class HomesideIdentitySensor(SensorEntity):
         self,
         coordinator: DataUpdateCoordinator,
         description: HomesideSensorEntityDescription,
+        device_id: str,
     ) -> None:
         self._coordinator = coordinator
         self.entity_description = description
+        self._device_id = device_id
         self._attr_unique_id = f"homeside_{description.key}"
+
+    @property
+    def device_info(self):
+        from .const import DOMAIN
+        return {
+            "identifiers": {(DOMAIN, self._device_id)},
+        }
 
     @property
     def available(self) -> bool:
@@ -209,10 +219,12 @@ class HomesideVariableSensor(SensorEntity):
         self,
         coordinator: DataUpdateCoordinator,
         config: VariableConfig,
+        device_id: str,
     ) -> None:
         self._coordinator = coordinator
         self._config = config
         self._name = config.name
+        self._device_id = device_id
         self._attr_unique_id = f"homeside_var_{config.address.replace(':', '_')}"
         if config.unit:
             self._attr_native_unit_of_measurement = config.unit
@@ -222,6 +234,13 @@ class HomesideVariableSensor(SensorEntity):
     @property
     def name(self) -> str | None:
         return self._name
+
+    @property
+    def device_info(self):
+        from .const import DOMAIN
+        return {
+            "identifiers": {(DOMAIN, self._device_id)},
+        }
 
     @property
     def available(self) -> bool:
@@ -273,15 +292,24 @@ class HomesideDiagnosticSensor(SensorEntity):
         coordinator: DataUpdateCoordinator,
         sensor_key: str,
         sensor_config: dict[str, Any],
+        device_id: str,
     ) -> None:
         self._coordinator = coordinator
         self._sensor_key = sensor_key
+        self._device_id = device_id
         self._attr_unique_id = f"homeside_diag_{sensor_key}"
         self._attr_name = sensor_config["name"]
         self._attr_native_unit_of_measurement = sensor_config["unit"]
         self._attr_icon = sensor_config["icon"]
         self._attr_device_class = sensor_config["device_class"]
         self._attr_state_class = sensor_config["state_class"]
+
+    @property
+    def device_info(self):
+        from .const import DOMAIN
+        return {
+            "identifiers": {(DOMAIN, self._device_id)},
+        }
 
     @property
     def available(self) -> bool:
