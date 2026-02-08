@@ -52,7 +52,7 @@ class HomesideClient:
         self._items_per_read = 80
         self._slave_items_per_read = 80
         self._items_per_read_min_limit = 5
-        self._error_codes: dict[int, str] = {}
+        self._error_codes: dict[int, str] = ERROR_CODES.copy()
 
     @property
     def identity(self) -> HomesideIdentity:
@@ -96,8 +96,6 @@ class HomesideClient:
                 project_name=params.get("projectName"),
                 serial=params.get("serial"),
             )
-
-            await self._load_error_codes()
 
             if self._username or self._password:
                 await self.login(self._username, self._password)
@@ -549,43 +547,6 @@ class HomesideClient:
         if self._peek_context > 99999:
             self._peek_context = 0
         return context
-
-    async def _load_error_codes(self) -> None:
-        if self._error_codes:
-            return
-        
-        # Start with fallback error codes from const
-        self._error_codes = ERROR_CODES.copy()
-        
-        # Try to load from device
-        url = f"http://{self._host}/EXOsocketErrorCodes-en.json"
-        try:
-            async with self._session.get(url) as resp:
-                if resp.status != 200:
-                    _LOGGER.debug("Error codes not available from device, using fallback")
-                    return
-                
-                # Check content type before parsing
-                content_type = resp.headers.get("Content-Type", "")
-                if "json" not in content_type.lower():
-                    _LOGGER.debug("Error codes not available from device (invalid content type), using fallback")
-                    return
-                    
-                data = await resp.json()
-        except Exception as exc:
-            _LOGGER.debug("Error codes not available from device, using fallback: %s", exc)
-            return
-
-        codes = data.get("codes", [])
-        texts = data.get("texts", [])
-        if isinstance(codes, list) and isinstance(texts, list):
-            device_codes = {
-                int(code): text
-                for code, text in zip(codes, texts)
-                if isinstance(code, int) and isinstance(text, str)
-            }
-            # Update with device codes (they take precedence)
-            self._error_codes.update(device_codes)
 
     def _error_text(self, code: Any) -> str:
         try:
