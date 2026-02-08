@@ -482,7 +482,7 @@
       "role_access": "Service"
     },
     "0:273": {
-      "enabled": true,
+      "enabled": false,
       "type": "sensor",
       "name": "Parallelförskjutning (rumstemp)",
       "note": "Antal grader +/- för parallellförskjutning av kurva",
@@ -609,7 +609,7 @@
       "role_access": "Guest"
     },
     "0:332": {
-      "enabled": true,
+      "enabled": false,
       "type": "sensor",
       "name": "Önskad rumstemperatur",
       "note": "Setpoint för önskad rumstemperatur (°C)",
