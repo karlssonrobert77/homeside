@@ -85,7 +85,7 @@ async def async_setup_entry(
     await coordinator.async_config_entry_first_refresh()
 
     entities = [
-        HomesideSwitch(coordinator, variable, config)
+        HomesideSwitch(coordinator, client, variable, config)
         for variable, config in switch_variables
     ]
 
@@ -99,11 +99,13 @@ class HomesideSwitch(CoordinatorEntity, SwitchEntity):
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
+        client: HomesideClient,
         variable: str,
         config: dict[str, Any],
     ) -> None:
         """Initialize the switch."""
         super().__init__(coordinator)
+        self._client = client
         self._variable = variable
         self._config = config
         self._name = config['name']
@@ -124,10 +126,10 @@ class HomesideSwitch(CoordinatorEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        await self.coordinator.client.write_point(self._variable, True)
+        await self._client.write_point(self._variable, True)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        await self.coordinator.client.write_point(self._variable, False)
+        await self._client.write_point(self._variable, False)
         await self.coordinator.async_request_refresh()

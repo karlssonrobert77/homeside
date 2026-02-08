@@ -82,7 +82,7 @@ async def async_setup_entry(
     await coordinator.async_config_entry_first_refresh()
 
     entities = [
-        HomesideSelect(coordinator, variable, config)
+        HomesideSelect(coordinator, client, variable, config)
         for variable, config in select_variables
     ]
 
@@ -96,11 +96,13 @@ class HomesideSelect(CoordinatorEntity, SelectEntity):
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
+        client: HomesideClient,
         variable: str,
         config: dict[str, Any],
     ) -> None:
         """Initialize the select entity."""
         super().__init__(coordinator)
+        self._client = client
         self._variable = variable
         self._config = config
         self._name = config['name']
@@ -129,7 +131,7 @@ class HomesideSelect(CoordinatorEntity, SelectEntity):
             idx = self._config["options"].index(option)
             value = self._config["values"][idx]
             
-            await self.coordinator.client.write_point(self._variable, value)
+            await self._client.write_point(self._variable, value)
             await self.coordinator.async_request_refresh()
         except ValueError:
             _LOGGER.error(f"Invalid option {option} for {self._variable}")
