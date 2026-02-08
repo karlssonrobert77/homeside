@@ -1,7 +1,7 @@
 {
   "domain": "homeside",
   "name": "HomeSide",
-  "version": "1.2.3",
+  "version": "1.3.0",
   "documentation": "https://github.com/karlssonrobert77/homeside",
   "issue_tracker": "https://github.com/karlssonrobert77/homeside/issues",
   "requirements": ["pycryptodome>=3.20.0"],
