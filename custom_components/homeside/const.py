@@ -3,6 +3,7 @@ DOMAIN = "homeside"
 CONF_HOST = "host"
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
+CONF_SHOW_DIAGNOSTIC = "show_diagnostic"
 
 WS_PATH = "/_EXOsocket/"
 

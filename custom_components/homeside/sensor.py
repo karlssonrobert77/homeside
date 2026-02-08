@@ -64,6 +64,9 @@ async def async_setup_entry(
 ) -> None:
     client: HomesideClient = hass.data[DOMAIN][entry.entry_id]["client"]
     device_id = hass.data[DOMAIN][entry.entry_id]["device_id"]
+    
+    # Check if diagnostic sensors should be shown
+    show_diagnostic = entry.options.get("show_diagnostic", entry.data.get("show_diagnostic", False))
 
     async def _update() -> dict[str, Any]:
         await client.ensure_connected()
@@ -84,9 +87,13 @@ async def async_setup_entry(
     )
 
     await coordinator.async_refresh()
-    entities: list[SensorEntity] = [
-        HomesideIdentitySensor(coordinator, description, device_id) for description in SENSORS
-    ]
+    entities: list[SensorEntity] = []
+    
+    # Only add identity sensors if diagnostic is enabled
+    if show_diagnostic:
+        entities.extend([
+            HomesideIdentitySensor(coordinator, description, device_id) for description in SENSORS
+        ])
 
     variable_configs = _load_variable_configs()
     sensor_configs = [cfg for cfg in variable_configs if cfg.enabled and cfg.type == "sensor"]
@@ -157,31 +164,31 @@ async def async_setup_entry(
                 for cfg in group_configs
             )
     
-    # Add diagnostic sensors
-    async def _update_diagnostics() -> dict[str, Any]:
-        await client.ensure_connected()
-        return await client.get_debug_info()
-    
-    diagnostic_coordinator = DataUpdateCoordinator(
-        hass,
-        logger=_LOGGER,
-        name="homeside_diagnostics",
-        update_method=_update_diagnostics,
-        update_interval=timedelta(seconds=UPDATE_INTERVAL_DIAGNOSTIC),
-    )
-    
-    await diagnostic_coordinator.async_refresh()
-    entities.extend(
-        HomesideDiagnosticSensor(diagnostic_coordinator, sensor_key, sensor_config, device_id)
-        for sensor_key, sensor_config in DIAGNOSTIC_SENSORS.items()
-    )
+    # Add diagnostic sensors (only if show_diagnostic is enabled)
+    if show_diagnostic:
+        async def _update_diagnostics() -> dict[str, Any]:
+            await client.ensure_connected()
+            return await client.get_debug_info()
+        
+        diagnostic_coordinator = DataUpdateCoordinator(
+            hass,
+            logger=_LOGGER,
+            name="homeside_diagnostics",
+            update_method=_update_diagnostics,
+            update_interval=timedelta(seconds=UPDATE_INTERVAL_DIAGNOSTIC),
+        )
+        
+        await diagnostic_coordinator.async_refresh()
+        entities.extend(
+            HomesideDiagnosticSensor(diagnostic_coordinator, sensor_key, sensor_config, device_id)
+            for sensor_key, sensor_config in DIAGNOSTIC_SENSORS.items()
+        )
 
     async_add_entities(entities)
 
 
 class HomesideIdentitySensor(SensorEntity):
     _attr_has_entity_name = True
-    _attr_entity_category = "diagnostic"
 
     def __init__(
         self,
@@ -231,11 +238,6 @@ class HomesideVariableSensor(SensorEntity):
             self._attr_native_unit_of_measurement = config.unit
         if config.device_class:
             self._attr_device_class = config.device_class
-        
-        # Set entity category based on sensor type
-        name_lower = config.name.lower()
-        if any(word in name_lower for word in ['version', 'rssi', 'mottagning']):
-            self._attr_entity_category = "diagnostic"
 
     @property
     def name(self) -> str | None:
