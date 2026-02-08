@@ -868,27 +868,57 @@
     },
     "0:487": {
       "enabled": true,
-      "type": "sensor",
+      "type": "select",
       "name": "VV1 tappvarmvatten ventil indikering",
       "note": "SYMBOL_VV1_TAPP (0=Röd, 1=Röd, 2=Grön)",
       "access": "read",
-      "role_access": "Guest"
+      "role_access": "Guest",
+      "options": [
+        "0%",
+        "Manuell",
+        "Auto"
+      ],
+      "values": [
+        0,
+        1,
+        2
+      ]
     },
     "0:488": {
       "enabled": false,
-      "type": "sensor",
+      "type": "select",
       "name": "VV1 tappvarmvatten ventil läge",
       "note": "VV1_TAPP_STATUS (0=0%, 1=Manuell, 2=Auto)",
       "access": "read_write",
-      "role_access": "Guest"
+      "role_access": "Guest",
+      "options": [
+        "0%",
+        "Manuell",
+        "Auto"
+      ],
+      "values": [
+        0,
+        1,
+        2
+      ]
     },
     "0:494": {
       "enabled": true,
-      "type": "sensor",
+      "type": "select",
       "name": "Fjärrvärme shuntventil läge",
       "note": "FJV_SV1_STATUS (0=0%, 1=Manuell, 2=Auto)",
       "access": "read_write",
-      "role_access": "Guest"
+      "role_access": "Guest",
+      "options": [
+        "0%",
+        "Manuell",
+        "Auto"
+      ],
+      "values": [
+        0,
+        1,
+        2
+      ]
     },
     "0:495": {
       "enabled": false,
@@ -1044,11 +1074,21 @@
     },
     "0:565": {
       "enabled": true,
-      "type": "sensor",
+      "type": "select",
       "name": "VS1 värmesystem shuntventil läge",
       "note": "VS1_SV1_STATUS (0=0%, 1=Manuell, 2=Auto)",
       "access": "read_write",
-      "role_access": "Guest"
+      "role_access": "Guest",
+      "options": [
+        "0%",
+        "Manuell",
+        "Auto"
+      ],
+      "values": [
+        0,
+        1,
+        2
+      ]
     },
     "0:572": {
       "enabled": false,
@@ -1165,11 +1205,21 @@
     },
     "0:608": {
       "enabled": true,
-      "type": "sensor",
+      "type": "select",
       "name": "VS1 värmesystem pump läge",
       "note": "VS1_P1_STATUS (0=Från, 1=Till, 2=Auto)",
       "access": "read_write",
-      "role_access": "Guest"
+      "role_access": "Guest",
+      "options": [
+        "Från",
+        "Till",
+        "Auto"
+      ],
+      "values": [
+        0,
+        1,
+        2
+      ]
     },
     "0:609": {
       "enabled": false,

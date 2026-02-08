@@ -22,30 +22,6 @@ from .const import DOMAIN, UPDATE_INTERVAL_NORMAL
 _LOGGER = logging.getLogger(__name__)
 _VARIABLES_FILE = Path(__file__).resolve().parent / "variables.json"
 
-# Mode definitions for pumps and valves
-MODE_DEFINITIONS = {
-    "0:487": {  # VV1 Tappvatten ventil indikering
-        "options": ["0%", "Manuell", "Auto"],
-        "values": [0, 1, 2],
-    },
-    "0:488": {  # VV1 Tappvatten (found in UI)
-        "options": ["0%", "Manuell", "Auto"],
-        "values": [0, 1, 2],
-    },
-    "0:494": {  # Fjärrvärme shuntventil läge
-        "options": ["0%", "Manuell", "Auto"],
-        "values": [0, 1, 2],
-    },
-    "0:565": {  # VS1 värmesystem shuntventil läge
-        "options": ["0%", "Manuell", "Auto"],
-        "values": [0, 1, 2],
-    },
-    "0:608": {  # VS1 värmesystem pump läge
-        "options": ["Från", "Till", "Auto"],
-        "values": [0, 1, 2],
-    },
-}
-
 
 def _load_variables() -> dict[str, dict]:
     """Load variables from variables.json."""
@@ -69,12 +45,15 @@ async def async_setup_entry(
 
     variables = _load_variables()
     
-    # Create select entities for mode variables
+    # Create select entities from variables with type="select"
     select_variables = []
-    for variable, mode_def in MODE_DEFINITIONS.items():
-        config = variables.get(variable)
-        if config and config.get("enabled"):
-            select_variables.append((variable, config, mode_def))
+    for variable, config in variables.items():
+        if config.get("type") == "select" and config.get("enabled"):
+            # Verify that options and values are defined
+            if "options" in config and "values" in config:
+                select_variables.append((variable, config))
+            else:
+                _LOGGER.warning(f"Select variable {variable} missing options or values")
 
     if not select_variables:
         return
@@ -83,7 +62,7 @@ async def async_setup_entry(
     async def _update() -> dict[str, Any]:
         await client.ensure_connected()
         data = {}
-        for variable, _, _ in select_variables:
+        for variable, _ in select_variables:
             try:
                 value = await client.read_point(variable)
                 if value is not None:
@@ -103,8 +82,8 @@ async def async_setup_entry(
     await coordinator.async_config_entry_first_refresh()
 
     entities = [
-        HomesideSelect(coordinator, variable, config, mode_def)
-        for variable, config, mode_def in select_variables
+        HomesideSelect(coordinator, variable, config)
+        for variable, config in select_variables
     ]
 
     async_add_entities(entities)
@@ -119,16 +98,14 @@ class HomesideSelect(CoordinatorEntity, SelectEntity):
         coordinator: DataUpdateCoordinator,
         variable: str,
         config: dict[str, Any],
-        mode_def: dict[str, list],
     ) -> None:
         """Initialize the select entity."""
         super().__init__(coordinator)
         self._variable = variable
         self._config = config
-        self._mode_def = mode_def
         self._attr_name = f"Homeside {config['name']}"
         self._attr_unique_id = f"homeside_{variable.replace(':', '_')}"
-        self._attr_options = mode_def["options"]
+        self._attr_options = config["options"]
         self._attr_entity_category = "config"
 
     @property
@@ -140,16 +117,16 @@ class HomesideSelect(CoordinatorEntity, SelectEntity):
         
         # Map numeric value to option string
         try:
-            idx = self._mode_def["values"].index(int(value))
-            return self._mode_def["options"][idx]
+            idx = self._config["values"].index(int(value))
+            return self._config["options"][idx]
         except (ValueError, IndexError):
             return None
 
     async def async_select_option(self, option: str) -> None:
         """Change the selected option."""
         try:
-            idx = self._mode_def["options"].index(option)
-            value = self._mode_def["values"][idx]
+            idx = self._config["options"].index(option)
+            value = self._config["values"][idx]
             
             await self.coordinator.client.write_point(self._variable, value)
             await self.coordinator.async_request_refresh()
