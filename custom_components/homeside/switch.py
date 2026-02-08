@@ -65,11 +65,11 @@ async def async_setup_entry(
     async def _update() -> dict[str, Any]:
         await client.ensure_connected()
         data = {}
-        for variable, _ in switch_variables:
+        for variable, config in switch_variables:
             try:
                 value = await client.read_point(variable)
                 if value is not None:
-                    data[variable] = value
+                    data[config['name']] = value
             except Exception as e:
                 _LOGGER.debug(f"Error reading {variable}: {e}")
         return data
@@ -106,6 +106,7 @@ class HomesideSwitch(CoordinatorEntity, SwitchEntity):
         super().__init__(coordinator)
         self._variable = variable
         self._config = config
+        self._name = config['name']
         self._attr_name = f"Homeside {config['name']}"
         self._attr_unique_id = f"homeside_{variable.replace(':', '_')}"
         
@@ -116,7 +117,7 @@ class HomesideSwitch(CoordinatorEntity, SwitchEntity):
     @property
     def is_on(self) -> bool | None:
         """Return true if switch is on."""
-        value = self.coordinator.data.get(self._variable)
+        value = self.coordinator.data.get(self._name)
         if value is None:
             return None
         return bool(value)
