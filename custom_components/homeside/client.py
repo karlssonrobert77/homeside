@@ -562,11 +562,18 @@ class HomesideClient:
         try:
             async with self._session.get(url) as resp:
                 if resp.status != 200:
-                    _LOGGER.debug("Failed to load error codes: %s", resp.status)
+                    _LOGGER.debug("Error codes not available from device, using fallback")
                     return
+                
+                # Check content type before parsing
+                content_type = resp.headers.get("Content-Type", "")
+                if "json" not in content_type.lower():
+                    _LOGGER.debug("Error codes not available from device (invalid content type), using fallback")
+                    return
+                    
                 data = await resp.json()
         except Exception as exc:
-            _LOGGER.debug("Failed to load error codes: %s", exc)
+            _LOGGER.debug("Error codes not available from device, using fallback: %s", exc)
             return
 
         codes = data.get("codes", [])
