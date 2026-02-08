@@ -231,16 +231,16 @@ class HomesideVariableSensor(SensorEntity):
     def native_value(self) -> Any:
         data = self._coordinator.data or {}
         values = data.get("values", {})
-        return values.get(self._config.address)
+        return values.get(self._name)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         data = self._coordinator.data or {}
         errors = data.get("errors", {})
-        info = errors.get(self._config.address)
-        note = (data.get("notes", {}) or {}).get(self._config.address)
-        access = (data.get("access", {}) or {}).get(self._config.address)
-        role_access = (data.get("role_access", {}) or {}).get(self._config.address)
+        info = errors.get(self._name)
+        note = (data.get("notes", {}) or {}).get(self._name)
+        access = (data.get("access", {}) or {}).get(self._name)
+        role_access = (data.get("role_access", {}) or {}).get(self._name)
         extra: dict[str, Any] = {}
         if note:
             extra["note"] = note
