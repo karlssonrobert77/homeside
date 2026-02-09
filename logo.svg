@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Background circle -->
+  <circle cx="128" cy="128" r="120" fill="#FF6B35" opacity="0.9"/>
+  
+  <!-- House shape -->
+  <path d="M 128 60 L 180 100 L 180 160 L 76 160 L 76 100 Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="4"/>
+  <path d="M 128 60 L 180 100 L 76 100 Z" fill="#4A90E2"/>
+  
+  <!-- Flame symbol in center -->
+  <path d="M 128 110 Q 118 125 118 135 Q 118 145 128 145 Q 138 145 138 135 Q 138 125 128 110 Z" 
+        fill="#FFB84D" stroke="#FF6B35" stroke-width="2"/>
+  <circle cx="128" cy="135" r="3" fill="#FFFFFF"/>
+  
+  <!-- Temperature indicator -->
+  <rect x="95" y="120" width="4" height="25" rx="2" fill="#E8F4F8"/>
+  <circle cx="97" cy="148" r="6" fill="#E8F4F8"/>
+  <rect x="96" y="125" width="2" height="18" fill="#4A90E2"/>
+  <circle cx="97" cy="148" r="4" fill="#4A90E2"/>
+</svg>
