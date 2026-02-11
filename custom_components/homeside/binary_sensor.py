@@ -10,6 +10,7 @@ from datetime import timedelta
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
@@ -159,7 +160,7 @@ async def async_setup_entry(
             combined_coordinator = DataUpdateCoordinator(
                 hass,
                 logger=_LOGGER,
-                name=f"homeside_combined_binary_{cfg.address.replace(':', '_')}",
+                name=f"homeside_combined_binary_{cfg.address[0].replace(':', '_')}",
                 update_method=_update_combined,
                 update_interval=timedelta(seconds=UPDATE_INTERVAL_NORMAL),
             )
@@ -190,7 +191,7 @@ class HomesideVariableBinarySensor(BinarySensorEntity):
         name_lower = name.lower()
         if any(word in name_lower for word in ['val', 'status']):
             # Configuration switches (selection of sensors/modes)
-            self._attr_entity_category = "config"
+            self._attr_entity_category = EntityCategory.CONFIG
 
     @property
     def name(self) -> str | None:

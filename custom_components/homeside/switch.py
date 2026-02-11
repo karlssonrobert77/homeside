@@ -11,6 +11,7 @@ from datetime import timedelta
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -52,16 +53,13 @@ def _load_variable_configs() -> list[VariableConfig]:
     
     configs: list[VariableConfig] = []
     for key, info in (raw.get("mapping") or {}).items():
-        if not address or not isinstance(address, str):
+        if not key or not isinstance(key, str):
             continue
         if not isinstance(info, dict):
             continue
         
-        # address already extracted above
+        address = info.get("address")
         if not address or not isinstance(address, list):
-            continue
-        
-        if False:  # Placeholder to match original structure
             continue
         
         name = str(info.get("name") or key)
@@ -70,7 +68,6 @@ def _load_variable_configs() -> list[VariableConfig]:
         note = info.get("note")
         access = info.get("access")
         role_access = info.get("role_access") or default_role_access
-        # address already extracted above
         format_template = info.get("format")
         
         configs.append(
@@ -223,7 +220,7 @@ class HomesideSwitch(CoordinatorEntity, SwitchEntity):
         
         # Set entity category if it's a configuration switch
         if any(word in config.name.lower() for word in ["av/på", "val", "rumsgivare"]):
-            self._attr_entity_category = "config"
+            self._attr_entity_category = EntityCategory.CONFIG
 
     @property
     def device_info(self):
@@ -271,7 +268,7 @@ class HomesideCombinedSwitch(SwitchEntity):
         self._attr_name = f"Homeside {config.name}"
         
         # Combined switches are read-only
-        self._attr_entity_category = "diagnostic"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
     
     @property
     def device_info(self):

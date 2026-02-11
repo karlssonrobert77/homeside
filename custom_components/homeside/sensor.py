@@ -10,6 +10,7 @@ from datetime import timedelta
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
@@ -203,7 +204,7 @@ async def async_setup_entry(
             combined_coordinator = DataUpdateCoordinator(
                 hass,
                 logger=_LOGGER,
-                name=f"homeside_combined_{cfg.address.replace(':', '_')}",
+                name=f"homeside_combined_{cfg.address[0].replace(':', '_')}",
                 update_method=_update_combined,
                 update_interval=timedelta(seconds=UPDATE_INTERVAL_NORMAL),
             )
@@ -424,7 +425,7 @@ class HomesideDiagnosticSensor(SensorEntity):
     """Diagnostic sensor for system monitoring."""
     
     _attr_has_entity_name = True
-    _attr_entity_category = "diagnostic"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(
         self,
