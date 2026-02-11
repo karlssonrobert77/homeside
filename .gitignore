@@ -15,6 +15,7 @@ env/
 *.swp
 *.swo
 *~
+*.backup
 
 # Testing
 .pytest_cache/

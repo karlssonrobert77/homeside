@@ -35,7 +35,7 @@ _VARIABLES_FILE = Path(__file__).resolve().parent / "variables.json"
 
 @dataclass(frozen=True, kw_only=True)
 class VariableConfig:
-    address: str
+    key: str  # Descriptive key from variables.json
     name: str
     enabled: bool
     type: str
@@ -44,6 +44,9 @@ class VariableConfig:
     role_access: str | None = None
     unit: str | None = None
     device_class: str | None = None
+    address: list[str]  # Address(es) for this entity
+    format: str | None = None
+    decimals: int | None = None
 
 @dataclass(frozen=True, kw_only=True)
 class HomesideSensorEntityDescription(SensorEntityDescription):
@@ -98,14 +101,18 @@ async def async_setup_entry(
     variable_configs = _load_variable_configs()
     sensor_configs = [cfg for cfg in variable_configs if cfg.enabled and cfg.type == "sensor"]
     
-    if sensor_configs:
+    # Separate multi-variable combined sensors from single-variable sensors
+    combined_sensors = [cfg for cfg in sensor_configs if len(cfg.address) > 1]
+    regular_sensors = [cfg for cfg in sensor_configs if len(cfg.address) == 1]
+    
+    if regular_sensors:
         # Group sensors by update interval
         fast_sensors = []
         normal_sensors = []
         slow_sensors = []
         very_slow_sensors = []
         
-        for cfg in sensor_configs:
+        for cfg in regular_sensors:
             name_lower = cfg.name.lower()
             if any(pattern in name_lower for pattern in VERY_SLOW_UPDATE_PATTERNS):
                 very_slow_sensors.append(cfg)
@@ -128,11 +135,11 @@ async def async_setup_entry(
             if not group_configs:
                 continue
                 
-            variables = [cfg.address for cfg in group_configs]
-            name_by_address = {cfg.address: cfg.name for cfg in group_configs}
-            note_by_address = {cfg.address: cfg.note for cfg in group_configs}
-            access_by_address = {cfg.address: cfg.access for cfg in group_configs}
-            role_by_address = {cfg.address: cfg.role_access for cfg in group_configs}
+            variables = [cfg.address[0] for cfg in group_configs]
+            name_by_address = {cfg.address[0]: cfg.name for cfg in group_configs}
+            note_by_address = {cfg.address[0]: cfg.note for cfg in group_configs}
+            access_by_address = {cfg.address[0]: cfg.access for cfg in group_configs}
+            role_by_address = {cfg.address[0]: cfg.role_access for cfg in group_configs}
 
             async def _update_variables(vars=variables, names=name_by_address, notes=note_by_address, access=access_by_address, roles=role_by_address) -> dict[str, Any]:
                 await client.ensure_connected()
@@ -162,6 +169,48 @@ async def async_setup_entry(
             entities.extend(
                 HomesideVariableSensor(variables_coordinator, cfg, device_id)
                 for cfg in group_configs
+            )
+    
+    # Add combined sensors
+    if combined_sensors:
+        # Group combined sensors that share the same sources together
+        for cfg in combined_sensors:
+            if not cfg.address:
+                continue
+            
+            variables = cfg.address
+            
+            async def _update_combined(vars=variables, fmt=cfg.format, cfg_name=cfg.name) -> dict[str, Any]:
+                await client.ensure_connected()
+                values, errors = await client.read_points_with_errors(vars)
+                
+                # Apply format template
+                if fmt and all(addr in values for addr in vars):
+                    try:
+                        formatted_value = fmt.format(*[values[addr] for addr in vars])
+                    except (KeyError, IndexError, ValueError) as e:
+                        _LOGGER.warning("Failed to format combined sensor %s: %s", cfg_name, e)
+                        formatted_value = None
+                else:
+                    formatted_value = None
+                
+                return {
+                    "value": formatted_value,
+                    "sources": {addr: values.get(addr) for addr in vars},
+                    "errors": {addr: errors.get(addr) for addr in vars},
+                }
+            
+            combined_coordinator = DataUpdateCoordinator(
+                hass,
+                logger=_LOGGER,
+                name=f"homeside_combined_{cfg.address.replace(':', '_')}",
+                update_method=_update_combined,
+                update_interval=timedelta(seconds=UPDATE_INTERVAL_NORMAL),
+            )
+            
+            await combined_coordinator.async_refresh()
+            entities.append(
+                HomesideCombinedSensor(combined_coordinator, cfg, device_id)
             )
     
     # Add diagnostic sensors (only if show_diagnostic is enabled)
@@ -223,8 +272,7 @@ class HomesideIdentitySensor(SensorEntity):
 class HomesideVariableSensor(SensorEntity):
     _attr_has_entity_name = True
 
-    def __init__(
-        self,
+    def __init__(self,
         coordinator: DataUpdateCoordinator,
         config: VariableConfig,
         device_id: str,
@@ -233,11 +281,13 @@ class HomesideVariableSensor(SensorEntity):
         self._config = config
         self._name = config.name
         self._device_id = device_id
-        self._attr_unique_id = f"homeside_var_{config.address.replace(':', '_')}"
+        self._attr_unique_id = f"homeside_var_{config.key.replace(':', '_').replace('/', '_')}"
         if config.unit:
             self._attr_native_unit_of_measurement = config.unit
         if config.device_class:
             self._attr_device_class = config.device_class
+        if config.decimals is not None:
+            self._attr_suggested_display_precision = config.decimals
 
     @property
     def name(self) -> str | None:
@@ -284,6 +334,87 @@ class HomesideVariableSensor(SensorEntity):
             }
         )
         return extra
+
+    async def async_update(self) -> None:
+        await self._coordinator.async_request_refresh()
+
+
+class HomesideCombinedSensor(SensorEntity):
+    """Sensor that combines multiple variables into one."""
+    _attr_has_entity_name = True
+
+    def __init__(self,
+        coordinator: DataUpdateCoordinator,
+        config: VariableConfig,
+        device_id: str,
+    ) -> None:
+        self._coordinator = coordinator
+        self._config = config
+        self._name = config.name
+        self._device_id = device_id
+        self._attr_unique_id = f"homeside_combined_{config.key.replace(':', '_').replace('/', '_')}"
+        if config.unit:
+            self._attr_native_unit_of_measurement = config.unit
+        if config.device_class:
+            self._attr_device_class = config.device_class
+        if config.decimals is not None:
+            self._attr_suggested_display_precision = config.decimals
+
+    @property
+    def name(self) -> str | None:
+        return self._name
+
+    @property
+    def device_info(self):
+        from .const import DOMAIN
+        return {
+            "identifiers": {(DOMAIN, self._device_id)},
+        }
+
+    @property
+    def available(self) -> bool:
+        return self._coordinator.last_update_success
+
+    @property
+    def native_value(self) -> Any:
+        data = self._coordinator.data or {}
+        return data.get("value")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        data = self._coordinator.data or {}
+        sources = data.get("sources", {})
+        errors = data.get("errors", {})
+        
+        extra: dict[str, Any] = {}
+        
+        # Add source variable values
+        if sources:
+            extra["sources"] = sources
+        
+        # Add address addresses
+        if self._config.address:
+            extra["address"] = self._config.address
+        
+        # Add format template
+        if self._config.format:
+            extra["format"] = self._config.format
+        
+        # Add note if available
+        if self._config.note:
+            extra["note"] = self._config.note
+        
+        # Add access info
+        if self._config.access:
+            extra["access"] = self._config.access
+        if self._config.role_access:
+            extra["role_access"] = self._config.role_access
+        
+        # Add any errors
+        if any(errors.values()):
+            extra["errors"] = {k: v for k, v in errors.items() if v}
+        
+        return extra or None
 
     async def async_update(self) -> None:
         await self._coordinator.async_request_refresh()
@@ -345,16 +476,19 @@ def _load_variable_configs() -> list[VariableConfig]:
     default_role_access = raw.get("role_access_default") or "Guest"
 
     configs: list[VariableConfig] = []
-    for address, info in (raw.get("mapping") or {}).items():
-        if not address or not isinstance(address, str):
-            continue
-        if ":" not in address:
-            _LOGGER.debug("Skipping %s: address must be device:item format", address)
+    for key, info in (raw.get("mapping") or {}).items():
+        if not key or not isinstance(key, str):
             continue
         if not isinstance(info, dict):
-            _LOGGER.debug("Skipping %s: config must be an object", address)
+            _LOGGER.debug("Skipping %s: config must be an object", key)
             continue
-        name = str(info.get("name") or address)
+        
+        address = info.get("address")
+        if not address or not isinstance(address, list):
+            _LOGGER.debug("Skipping %s: address is required and must be a list", key)
+            continue
+        
+        name = str(info.get("name") or key)
         enabled = bool(info.get("enabled", False))
         vtype = str(info.get("type") or "sensor")
         note = info.get("note")
@@ -362,9 +496,12 @@ def _load_variable_configs() -> list[VariableConfig]:
         role_access = info.get("role_access") or default_role_access
         unit = info.get("unit")
         device_class = info.get("device_class")
+        format_template = info.get("format")
+        decimals = info.get("decimals")
+        
         configs.append(
             VariableConfig(
-                address=address,
+                key=key,
                 name=name,
                 enabled=enabled,
                 type=vtype,
@@ -373,6 +510,9 @@ def _load_variable_configs() -> list[VariableConfig]:
                 role_access=role_access,
                 unit=unit,
                 device_class=device_class,
+                address=address,
+                format=format_template,
+                decimals=decimals,
             )
         )
     return configs

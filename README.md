@@ -37,7 +37,48 @@ Integration för HomeSide-värmesystem med WebSocket-kommunikation.
 4. Ange IP-adressen till din HomeSide-enhet
 5. Klicka **Skicka**
 
-## 📊 Entities
+## � Avancerad Konfiguration
+
+### Combined Sensors (Kombinerade sensorer)
+
+Integrationen stödjer kombinerade entities som slår ihop flera variabler till en enda entity med anpassad formatering. **Fungerar för alla plattformar:**
+
+- ✅ **sensor** - Full funktionalitet
+- ✅ **binary_sensor** - Full funktionalitet  
+- ✅ **number** - Read-only visning
+- ✅ **switch** - Read-only visning
+- ✅ **select** - Read-only visning
+
+Se [COMBINED_SENSORS.md](COMBINED_SENSORS.md) för detaljerad dokumentation.
+
+**Exempel: Version-sensor**
+
+I `variables.json`:
+```json
+{
+  "version": {
+    "enabled": true,
+    "type": "sensor",
+    "name": "ExoReal Version",
+    "address": ["0:651", "0:648", "0:47", "0:50"],
+    "format": "{0}-{1},{2},{3}"
+  }
+}
+```
+
+Detta skapar en sensor som kombinerar product-major-minor-build till formatet `3-7,1,15`.
+
+**Fler exempel:**
+- Temperaturområden: `"{0}°C - {1}°C"`
+- GPS-koordinater: `"{0}, {1}"`
+- Status kombinationer för binary sensors
+- Summa/medelvärde för number entities (read-only)
+
+**OBS:** Combined entities av typen number, switch och select är read-only och kan inte skrivas till.
+
+Se [COMBINED_SENSORS.md](COMBINED_SENSORS.md) för fler exempel och best practices.
+
+## �📊 Entities
 
 ### Temperatursensorer
 - `sensor.homeside_vs1_framledning` - VS1 supply temperature
@@ -52,10 +93,10 @@ Integration för HomeSide-värmesystem med WebSocket-kommunikation.
 - `sensor.homeside_fjarvarme_shunt_lage` - District heating valve mode
 
 ### Diagnostic Sensors
+- `sensor.homeside_exoreal_version` - ExoReal full version (combined: product-major,minor,build)
 - `sensor.homeside_rum_1_rssi` - Room 1 wireless signal strength
 - `sensor.homeside_utegivare_rssi` - Outdoor sensor signal strength
 - `sensor.homeside_duc_version` - DUC firmware version
-- `sensor.homeside_exoreal_version_*` - ExoReal version components
 
 ### Binary Sensors
 - `binary_sensor.homeside_sommardrift` - Summer mode status

@@ -24,13 +24,18 @@ _VARIABLES_FILE = Path(__file__).resolve().parent / "variables.json"
 
 @dataclass(frozen=True, kw_only=True)
 class VariableConfig:
-    address: str
+    key: str  # Descriptive key from variables.json
     name: str
     enabled: bool
     type: str
     note: str | None = None
     access: str | None = None
     role_access: str | None = None
+    address: list[str]  # Address(es) for this entity
+    format: str | None = None
+    min: float | None = None
+    max: float | None = None
+    step: float | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -56,7 +61,7 @@ def _load_number_configs() -> list[VariableConfig]:
     ]
     
     configs = []
-    for address, config in data.get("mapping", {}).items():
+    for key, config in data.get("mapping", {}).items():
         # Only include read_write variables with type "number" or writable sensors
         access = config.get("access", "read")
         if access != "read_write":
@@ -73,63 +78,26 @@ def _load_number_configs() -> list[VariableConfig]:
         
         configs.append(
             VariableConfig(
-                address=address,
-                name=config.get("name", f"Number {address}"),
+                key=key,
+                name=config.get("name", f"Number {key}"),
                 enabled=config.get("enabled", False),
                 type="number",
                 note=config.get("note"),
                 access=access,
                 role_access=config.get("role_access"),
+                address=config.get("address"),
+                format=config.get("format"),
+                min=config.get("min"),
+                max=config.get("max"),
+                step=config.get("step"),
             )
         )
     
     return configs
 
 
-# Define min/max/step for specific variables
-_NUMBER_LIMITS = {
-    # Heating curve points (temperature in °C)
-    "0:233": {"min": 10.0, "max": 80.0, "step": 0.5},  # Grundkurva -30°C
-    "0:242": {"min": 10.0, "max": 80.0, "step": 0.5},  # Grundkurva -25°C
-    "0:251": {"min": 10.0, "max": 80.0, "step": 0.5},  # Grundkurva -20°C
-    "0:261": {"min": 10.0, "max": 80.0, "step": 0.5},  # Grundkurva -15°C
-    "0:269": {"min": 10.0, "max": 80.0, "step": 0.5},  # Grundkurva -10°C
-    "0:278": {"min": 10.0, "max": 80.0, "step": 0.5},  # Grundkurva -5°C
-    "0:287": {"min": 10.0, "max": 80.0, "step": 0.5},  # Grundkurva 0°C
-    "0:296": {"min": 10.0, "max": 80.0, "step": 0.5},  # Grundkurva +5°C
-    "0:305": {"min": 10.0, "max": 80.0, "step": 0.5},  # Grundkurva +10°C
-    "0:314": {"min": 10.0, "max": 80.0, "step": 0.5},  # Grundkurva +15°C
-    
-    # Adaptation curve points
-    "0:431": {"min": -10.0, "max": 10.0, "step": 0.5},  # Adaptionskurva -30°C
-    "0:440": {"min": -10.0, "max": 10.0, "step": 0.5},  # Adaptionskurva -25°C
-    "0:449": {"min": -10.0, "max": 10.0, "step": 0.5},  # Adaptionskurva -20°C
-    "0:458": {"min": -10.0, "max": 10.0, "step": 0.5},  # Adaptionskurva -15°C
-    "0:467": {"min": -10.0, "max": 10.0, "step": 0.5},  # Adaptionskurva -10°C
-    "0:476": {"min": -10.0, "max": 10.0, "step": 0.5},  # Adaptionskurva -5°C
-    "0:485": {"min": -10.0, "max": 10.0, "step": 0.5},  # Adaptionskurva 0°C
-    "0:495": {"min": -10.0, "max": 10.0, "step": 0.5},  # Adaptionskurva +5°C
-    "0:503": {"min": -10.0, "max": 10.0, "step": 0.5},  # Adaptionskurva +10°C
-    "0:512": {"min": -10.0, "max": 10.0, "step": 0.5},  # Adaptionskurva +15°C
-    
-    # X-points (outdoor temperature in °C)
-    "0:545": {"min": -40.0, "max": 20.0, "step": 1.0},  # X1
-    "0:554": {"min": -40.0, "max": 20.0, "step": 1.0},  # X2
-    "0:563": {"min": -40.0, "max": 20.0, "step": 1.0},  # X3
-    "0:572": {"min": -40.0, "max": 20.0, "step": 1.0},  # X4
-    "0:581": {"min": -40.0, "max": 20.0, "step": 1.0},  # X5
-    "0:590": {"min": -40.0, "max": 20.0, "step": 1.0},  # X6
-    "0:599": {"min": -40.0, "max": 20.0, "step": 1.0},  # X7
-    "0:609": {"min": -40.0, "max": 20.0, "step": 1.0},  # X8
-    "0:617": {"min": -40.0, "max": 20.0, "step": 1.0},  # X9
-    "0:626": {"min": -40.0, "max": 20.0, "step": 1.0},  # X10
-    
-    # System parameters
-    "0:273": {"min": -5.0, "max": 5.0, "step": 0.5},    # Parallelförskjutning
-    "0:332": {"min": 15.0, "max": 25.0, "step": 0.5},   # Önskad rumstemperatur
-    "0:377": {"min": 10.0, "max": 50.0, "step": 1.0},   # Min framledningstemperatur
-    "0:386": {"min": 30.0, "max": 80.0, "step": 1.0},   # Max framledningstemperatur
-}
+# Default limits for number entities (used if not specified in variables.json)
+_DEFAULT_LIMITS = {"min": 0.0, "max": 100.0, "step": 1.0}
 
 
 async def async_setup_entry(
@@ -139,6 +107,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up HomeSide number entities from a config entry."""
     client: HomesideClient = hass.data[DOMAIN][entry.entry_id]["client"]
+    device_id = hass.data[DOMAIN][entry.entry_id]["device_id"]
     
     # Load writable number configs
     number_configs = _load_number_configs()
@@ -147,34 +116,85 @@ async def async_setup_entry(
         _LOGGER.info("No writable number variables enabled")
         return
     
-    # Create coordinator for number entities (slower update since they're controls)
-    coordinator = DataUpdateCoordinator(
-        hass,
-        _LOGGER,
-        name=f"{DOMAIN}_numbers",
-        update_method=lambda: _async_update_numbers(client, number_configs),
-        update_interval=timedelta(seconds=UPDATE_INTERVAL_SLOW),
-    )
+    # Separate combined from regular numbers
+    combined_numbers = [cfg for cfg in number_configs if cfg.address]
+    regular_numbers = [cfg for cfg in number_configs if not cfg.address]
     
-    await coordinator.async_config_entry_first_refresh()
-    
-    # Create number entities
     entities = []
-    for config in number_configs:
-        limits = _NUMBER_LIMITS.get(config.address, {"min": 0.0, "max": 100.0, "step": 1.0})
-        
-        description = HomesideNumberEntityDescription(
-            key=config.address,
-            name=config.name,
-            min_value=limits["min"],
-            max_value=limits["max"],
-            step=limits["step"],
+    
+    # Regular writable numbers
+    if regular_numbers:
+        # Create coordinator for number entities (slower update since they're controls)
+        coordinator = DataUpdateCoordinator(
+            hass,
+            _LOGGER,
+            name=f"{DOMAIN}_numbers",
+            update_method=lambda: _async_update_numbers(client, regular_numbers),
+            update_interval=timedelta(seconds=UPDATE_INTERVAL_SLOW),
         )
         
-        entities.append(HomesideNumberEntity(coordinator, client, description, config))
+        await coordinator.async_config_entry_first_refresh()
+        
+        # Create number entities
+        for config in regular_numbers:
+            # Use limits from config, or default if not specified
+            min_val = config.min if config.min is not None else _DEFAULT_LIMITS["min"]
+            max_val = config.max if config.max is not None else _DEFAULT_LIMITS["max"]
+            step_val = config.step if config.step is not None else _DEFAULT_LIMITS["step"]
+            
+            description = HomesideNumberEntityDescription(
+                key=config.address[0],
+                name=config.name,
+                min_value=min_val,
+                max_value=max_val,
+                step=step_val,
+            )
+            
+            entities.append(HomesideNumberEntity(coordinator, client, description, config, device_id))
+    
+    # Combined numbers (read-only)
+    if combined_numbers:
+        for cfg in combined_numbers:
+            if not cfg.address:
+                continue
+            
+            variables = cfg.address
+            
+            async def _update_combined(vars=variables, fmt=cfg.format, cfg_name=cfg.name) -> dict[str, Any]:
+                await client.ensure_connected()
+                values, errors = await client.read_points_with_errors(vars)
+                
+                # Apply format template
+                if fmt and all(addr in values for addr in vars):
+                    try:
+                        formatted_value = fmt.format(*[values[addr] for addr in vars])
+                    except (KeyError, IndexError, ValueError) as e:
+                        _LOGGER.warning("Failed to format combined number %s: %s", cfg_name, e)
+                        formatted_value = None
+                else:
+                    formatted_value = None
+                
+                return {
+                    "value": formatted_value,
+                    "sources": {addr: values.get(addr) for addr in vars},
+                    "errors": {addr: errors.get(addr) for addr in vars},
+                }
+            
+            combined_coordinator = DataUpdateCoordinator(
+                hass,
+                logger=_LOGGER,
+                name=f"homeside_combined_number_{cfg.address[0].replace(':', '_')}",
+                update_method=_update_combined,
+                update_interval=timedelta(seconds=UPDATE_INTERVAL_SLOW),
+            )
+            
+            await combined_coordinator.async_refresh()
+            entities.append(
+                HomesideCombinedNumberEntity(combined_coordinator, cfg, device_id)
+            )
     
     async_add_entities(entities)
-    _LOGGER.info("Added %d writable number entities", len(entities))
+    _LOGGER.info("Added %d number entities", len(entities))
 
 
 async def _async_update_numbers(
@@ -182,7 +202,7 @@ async def _async_update_numbers(
     configs: list[VariableConfig],
 ) -> dict[str, Any]:
     """Fetch current values for all number entities."""
-    addresses = [cfg.address for cfg in configs]
+    addresses = [cfg.address[0] for cfg in configs]
     await client.ensure_connected()
     values = await client.read_points(addresses)
     return values
@@ -201,19 +221,18 @@ class HomesideNumberEntity(NumberEntity):
         client: HomesideClient,
         description: HomesideNumberEntityDescription,
         config: VariableConfig,
+        device_id: str,
     ) -> None:
         """Initialize the number entity."""
         self.coordinator = coordinator
         self._client = client
         self.entity_description = description
         self._config = config
+        self._device_id = device_id
         
-        self._attr_unique_id = f"{DOMAIN}_{config.address}_number"
+        self._attr_unique_id = f"{DOMAIN}_{config.address[0]}_number"
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, client.identity.serial or "homeside")},
-            "name": "HomeSide",
-            "manufacturer": "Regin",
-            "model": client.identity.controller_name or "Unknown",
+            "identifiers": {(DOMAIN, device_id)},
         }
         
         # Set min/max/step from description
@@ -234,7 +253,7 @@ class HomesideNumberEntity(NumberEntity):
     @property
     def native_value(self) -> float | None:
         """Return the current value."""
-        value = self.coordinator.data.get(self._config.address)
+        value = self.coordinator.data.get(self._config.address[0])
         if value is None:
             return None
         try:
@@ -244,7 +263,7 @@ class HomesideNumberEntity(NumberEntity):
     
     async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
-        _LOGGER.info("Setting %s to %s", self._config.address, value)
+        _LOGGER.info("Setting %s to %s", self._config.address[0], value)
         
         # Validate value is within bounds
         if value < self.native_min_value or value > self.native_max_value:
@@ -253,23 +272,122 @@ class HomesideNumberEntity(NumberEntity):
                 value,
                 self.native_min_value,
                 self.native_max_value,
-                self._config.address,
+                self._config.address[0],
             )
             return
         
         # Write the value
-        success = await self._client.write_point(self._config.address, value)
+        success = await self._client.write_point(self._config.address[0], value)
         
         if success:
             # Update coordinator immediately to reflect the change
             await self.coordinator.async_request_refresh()
         else:
-            _LOGGER.error("Failed to write value to %s", self._config.address)
+            _LOGGER.error("Failed to write value to %s", self._config.address[0])
     
     @property
     def available(self) -> bool:
         """Return if entity is available."""
         return self.coordinator.last_update_success and self.native_value is not None
+    
+    async def async_added_to_hass(self) -> None:
+        """When entity is added to hass."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self.async_write_ha_state)
+        )
+    
+    async def async_update(self) -> None:
+        """Update the entity."""
+        await self.coordinator.async_request_refresh()
+
+
+class HomesideCombinedNumberEntity(NumberEntity):
+    """Read-only number entity that combines multiple variables into one."""
+    
+    _attr_has_entity_name = True
+    _attr_mode = NumberMode.BOX
+    
+    def __init__(
+        self,
+        coordinator: DataUpdateCoordinator,
+        config: VariableConfig,
+        device_id: str,
+    ) -> None:
+        """Initialize the combined number entity."""
+        self.coordinator = coordinator
+        self._config = config
+        self._device_id = device_id
+        
+        self._attr_unique_id = f"{DOMAIN}_combined_{config.key.replace(":", "_").replace("/", "_")}_number"
+        self._attr_name = config.name
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, device_id)},
+        }
+        
+        # Combined numbers are read-only
+        self._attr_native_min_value = 0.0
+        self._attr_native_max_value = 100.0
+        self._attr_native_step = 1.0
+        
+        # Icon
+        if "version" in config.name.lower():
+            self._attr_icon = "mdi:information"
+        else:
+            self._attr_icon = "mdi:numeric"
+    
+    @property
+    def native_value(self) -> float | None:
+        """Return the current value."""
+        data = self.coordinator.data or {}
+        value = data.get("value")
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            return None
+    
+    async def async_set_native_value(self, value: float) -> None:
+        """Combined numbers are read-only."""
+        _LOGGER.warning("Cannot write to combined number entity %s", self._config.name)
+        return
+    
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Return extra attributes."""
+        data = self.coordinator.data or {}
+        sources = data.get("sources", {})
+        errors = data.get("errors", {})
+        
+        extra: dict[str, Any] = {}
+        
+        if sources:
+            extra["sources"] = sources
+        
+        if self._config.address:
+            extra["address"] = self._config.address
+        
+        if self._config.format:
+            extra["format"] = self._config.format
+        
+        if self._config.note:
+            extra["note"] = self._config.note
+        
+        if self._config.access:
+            extra["access"] = self._config.access
+        if self._config.role_access:
+            extra["role_access"] = self._config.role_access
+        
+        if any(errors.values()):
+            extra["errors"] = {k: v for k, v in errors.items() if v}
+        
+        return extra or None
+    
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.last_update_success
     
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
