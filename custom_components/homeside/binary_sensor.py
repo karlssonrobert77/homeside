@@ -54,7 +54,18 @@ async def async_setup_entry(
     device_id = hass.data[DOMAIN][entry.entry_id]["device_id"]
 
     variable_configs = _load_variable_configs()
-    binary_configs = [cfg for cfg in variable_configs if cfg.enabled and cfg.type == "binary_sensor"]
+    # Session-level filtering
+    from .const import ROLE_HIERARCHY
+    session_level = getattr(client, '_session_level', None)
+    allowed_roles = set()
+    if session_level is not None:
+        allowed_roles = set(ROLE_HIERARCHY[: session_level + 1])
+    binary_configs = [
+        cfg for cfg in variable_configs
+        if cfg.enabled and cfg.type == "binary_sensor" and (
+            not cfg.role_access or cfg.role_access in allowed_roles
+        )
+    ]
     if not binary_configs:
         return
 

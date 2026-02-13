@@ -97,17 +97,21 @@ async def async_setup_entry(
     device_id = hass.data[DOMAIN][entry.entry_id]["device_id"]
 
     variable_configs = _load_variable_configs()
-    
+    # Session-level filtering
+    from .const import ROLE_HIERARCHY
+    session_level = getattr(client, '_session_level', None)
+    allowed_roles = set()
+    if session_level is not None:
+        allowed_roles = set(ROLE_HIERARCHY[: session_level + 1])
     # Get all boolean writable variables that are enabled (type=switch or binary_sensor with write access)
     switch_configs = [
         cfg for cfg in variable_configs
         if cfg.enabled and cfg.access == "read_write" and cfg.type in ["switch", "binary_sensor"]
+        and (not cfg.role_access or cfg.role_access in allowed_roles)
     ]
-    
     # Separate combined from regular switches
     combined_switches = [cfg for cfg in switch_configs if cfg.address]
     regular_switches = [cfg for cfg in switch_configs if not cfg.address]
-    
     if not regular_switches and not combined_switches:
         return
     

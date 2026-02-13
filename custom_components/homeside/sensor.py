@@ -102,7 +102,18 @@ async def async_setup_entry(
         ])
 
     variable_configs = _load_variable_configs()
-    sensor_configs = [cfg for cfg in variable_configs if cfg.enabled and cfg.type == "sensor"]
+    # Session-level filtering
+    from .const import ROLE_HIERARCHY
+    session_level = getattr(client, '_session_level', None)
+    allowed_roles = set()
+    if session_level is not None:
+        allowed_roles = set(ROLE_HIERARCHY[: session_level + 1])
+    sensor_configs = [
+        cfg for cfg in variable_configs
+        if cfg.enabled and cfg.type == "sensor" and (
+            not cfg.role_access or cfg.role_access in allowed_roles
+        )
+    ]
     
     # Separate multi-variable combined sensors from single-variable sensors
     combined_sensors = [cfg for cfg in sensor_configs if len(cfg.address) > 1]

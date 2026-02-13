@@ -111,7 +111,16 @@ async def async_setup_entry(
     
     # Load writable number configs
     number_configs = _load_number_configs()
-    
+    # Session-level filtering
+    from .const import ROLE_HIERARCHY
+    session_level = getattr(client, '_session_level', None)
+    allowed_roles = set()
+    if session_level is not None:
+        allowed_roles = set(ROLE_HIERARCHY[: session_level + 1])
+    number_configs = [
+        cfg for cfg in number_configs
+        if not cfg.role_access or cfg.role_access in allowed_roles
+    ]
     if not number_configs:
         _LOGGER.info("No writable number variables enabled")
         return

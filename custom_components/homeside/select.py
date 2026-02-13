@@ -102,17 +102,21 @@ async def async_setup_entry(
     device_id = hass.data[DOMAIN][entry.entry_id]["device_id"]
 
     variable_configs = _load_variable_configs()
-    
+    # Session-level filtering
+    from .const import ROLE_HIERARCHY
+    session_level = getattr(client, '_session_level', None)
+    allowed_roles = set()
+    if session_level is not None:
+        allowed_roles = set(ROLE_HIERARCHY[: session_level + 1])
     # Create select entities from variables with type="select"
     select_configs = [
         cfg for cfg in variable_configs
         if cfg.enabled and cfg.type == "select" and cfg.options and cfg.values
+        and (not cfg.role_access or cfg.role_access in allowed_roles)
     ]
-    
     # Separate combined from regular selects
     combined_selects = [cfg for cfg in select_configs if cfg.address]
     regular_selects = [cfg for cfg in select_configs if not cfg.address]
-    
     if not regular_selects and not combined_selects:
         return
     
