@@ -212,7 +212,22 @@ class HomesideVariableBinarySensor(BinarySensorEntity):
     def is_on(self) -> bool | None:
         data = self._coordinator.data or {}
         values = data.get("values", {})
+        errors = data.get("errors", {})
         value = values.get(self._name)
+        error = errors.get(self._name)
+        # Load none_value_default from variables.json root
+        none_value_default = 0
+        try:
+            import json
+            from pathlib import Path
+            variables_file = Path(__file__).resolve().parent / "variables.json"
+            with open(variables_file, "r", encoding="utf-8") as f:
+                root = json.load(f)
+                none_value_default = root.get("none_value_dafault", 0)
+        except Exception:
+            pass
+        if error and error.get("code") == 47 and value is None:
+            value = none_value_default
         if value is None:
             return None
         if isinstance(value, bool):
@@ -283,6 +298,21 @@ class HomesideCombinedBinarySensor(BinarySensorEntity):
     def is_on(self) -> bool | None:
         data = self._coordinator.data or {}
         value = data.get("value")
+        errors = data.get("errors", {})
+        # Load none_value_default from variables.json root
+        none_value_default = 0
+        try:
+            import json
+            from pathlib import Path
+            variables_file = Path(__file__).resolve().parent / "variables.json"
+            with open(variables_file, "r", encoding="utf-8") as f:
+                root = json.load(f)
+                none_value_default = root.get("none_value_dafault", 0)
+        except Exception:
+            pass
+        # If any error for a source is code 47 and value is None, use fallback
+        if any((err and err.get("code") == 47 and value is None) for err in errors.values()):
+            value = none_value_default
         if value is None:
             return None
         if isinstance(value, bool):

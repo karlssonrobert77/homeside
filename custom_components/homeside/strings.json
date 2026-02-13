@@ -14,6 +14,16 @@
           "username": "Lämna tomt för skrivskyddad åtkomst",
           "password": "Lämna tomt för skrivskyddad åtkomst"
         }
+      },
+      "init": {
+        "title": "Diagnostik och debug",
+        "description": "Visa debug/diagnostik-information (versioner, RSSI, heap memory, etc.)",
+        "data": {
+          "show_diagnostic": "Visa diagnostik"
+        },
+        "data_description": {
+          "show_diagnostic": "Aktivera för att visa diagnostik och debug-information i Home Assistant"
+        }
       }
     }
   }

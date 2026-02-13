@@ -27,6 +27,8 @@ from .const import (
     UPDATE_INTERVAL_VERY_SLOW,
     UPDATE_INTERVAL_DIAGNOSTIC,
     DIAGNOSTIC_SENSORS,
+    SESSION_LEVEL_ROLES,
+    ROLE_HIERARCHY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -309,7 +311,23 @@ class HomesideVariableSensor(SensorEntity):
     def native_value(self) -> Any:
         data = self._coordinator.data or {}
         values = data.get("values", {})
-        return values.get(self._name)
+        errors = data.get("errors", {})
+        value = values.get(self._name)
+        error = errors.get(self._name)
+        # Load none_value_default from variables.json root
+        none_value_default = 0
+        try:
+            import json
+            from pathlib import Path
+            variables_file = Path(__file__).resolve().parent / "variables.json"
+            with open(variables_file, "r", encoding="utf-8") as f:
+                root = json.load(f)
+                none_value_default = root.get("none_value_dafault", 0)
+        except Exception:
+            pass
+        if error and error.get("code") == 47 and value is None:
+            return none_value_default
+        return value
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
@@ -379,7 +397,23 @@ class HomesideCombinedSensor(SensorEntity):
     @property
     def native_value(self) -> Any:
         data = self._coordinator.data or {}
-        return data.get("value")
+        value = data.get("value")
+        errors = data.get("errors", {})
+        # Load none_value_default from variables.json root
+        none_value_default = 0
+        try:
+            import json
+            from pathlib import Path
+            variables_file = Path(__file__).resolve().parent / "variables.json"
+            with open(variables_file, "r", encoding="utf-8") as f:
+                root = json.load(f)
+                none_value_default = root.get("none_value_dafault", 0)
+        except Exception:
+            pass
+        # If any error for a source is code 47 and value is None, use fallback
+        if any((err and err.get("code") == 47 and value is None) for err in errors.values()):
+            return none_value_default
+        return value
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:

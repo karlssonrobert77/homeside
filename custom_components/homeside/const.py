@@ -16,6 +16,18 @@ UPDATE_INTERVAL_SLOW = 300  # Configuration, version info, calibration
 UPDATE_INTERVAL_VERY_SLOW = 3600  # Static info like serial numbers
 UPDATE_INTERVAL_DIAGNOSTIC = 1800  # System diagnostics (30 minutes)
 
+# Session level to role mapping (shared with CLI)
+SESSION_LEVEL_ROLES = {
+    0: "None",
+    1: "Guest",
+    2: "Operator",
+    3: "Service",
+    4: "Admin",
+}
+
+# Role hierarchy - each level can access itself and all lower levels (shared with CLI)
+ROLE_HIERARCHY = ["None", "Guest", "Operator", "Service", "Admin"]
+
 # Sensor update groups by variable name patterns
 FAST_UPDATE_PATTERNS = [
     "temp",

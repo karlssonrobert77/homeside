@@ -254,12 +254,41 @@ class HomesideNumberEntity(NumberEntity):
     def native_value(self) -> float | None:
         """Return the current value."""
         value = self.coordinator.data.get(self._config.address[0])
+        # Try to get error info if available
+        errors = getattr(self.coordinator, 'data', {}).get('errors', {}) if hasattr(self.coordinator, 'data') else {}
+        error = errors.get(self._config.address[0]) if errors else None
+        # Load none_value_default from variables.json root
+        none_value_default = 0
+        try:
+            import json
+            from pathlib import Path
+            variables_file = Path(__file__).resolve().parent / "variables.json"
+            with open(variables_file, "r", encoding="utf-8") as f:
+                root = json.load(f)
+                none_value_default = root.get("none_value_dafault", 0)
+        except Exception:
+            pass
+        if error and error.get("code") == 47 and value is None:
+            value = none_value_default
         if value is None:
             return None
         try:
             return float(value)
         except (ValueError, TypeError):
             return None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        extra = {}
+        # Add readonly attribute if session_level is None/Guest
+        try:
+            readonly = False
+            if hasattr(self._client, '_session_level') and self._client._session_level is not None and self._client._session_level <= 1:
+                readonly = True
+            extra["readonly"] = readonly
+        except Exception:
+            pass
+        return extra or None
     
     async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
@@ -341,6 +370,21 @@ class HomesideCombinedNumberEntity(NumberEntity):
         """Return the current value."""
         data = self.coordinator.data or {}
         value = data.get("value")
+        errors = data.get("errors", {})
+        # Load none_value_default from variables.json root
+        none_value_default = 0
+        try:
+            import json
+            from pathlib import Path
+            variables_file = Path(__file__).resolve().parent / "variables.json"
+            with open(variables_file, "r", encoding="utf-8") as f:
+                root = json.load(f)
+                none_value_default = root.get("none_value_dafault", 0)
+        except Exception:
+            pass
+        # If any error for a source is code 47 and value is None, use fallback
+        if any((err and err.get("code") == 47 and value is None) for err in errors.values()):
+            value = none_value_default
         if value is None:
             return None
         try:

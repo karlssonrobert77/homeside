@@ -53,6 +53,14 @@ class HomesideClient:
         self._slave_items_per_read = 80
         self._items_per_read_min_limit = 5
         self._error_codes: dict[int, str] = ERROR_CODES.copy()
+        
+        # Encryption state
+        self._authenticated = False
+        self._aes_key: bytes | None = None
+        self._scbc_acc: bytearray | None = None  # Send CBC accumulator
+        self._rcbc_acc: bytearray | None = None  # Receive CBC accumulator
+        self._encryptor: AES = None
+        self._decryptor: AES = None
 
     @property
     def identity(self) -> HomesideIdentity:
@@ -151,6 +159,29 @@ class HomesideClient:
         ):
             raise ConnectionError("Login confirmation mismatch")
 
+        # Setup encryption - after successful authentication
+        self._authenticated = True
+        
+        # Generate and send client IV (SCBCacc - Send CBC accumulator)
+        self._scbc_acc = bytearray(os.urandom(16))
+        await self._ws.send_bytes(self._scbc_acc)
+        _LOGGER.debug("Sent client IV (%d bytes)", len(self._scbc_acc))
+        
+        # Setup AES encryptor/decryptor with the key from auth
+        # Key was computed during _compute_auth_response
+        from Crypto.Cipher import AES as AESCipher
+        self._encryptor = AESCipher.new(self._aes_key, AESCipher.MODE_ECB)
+        self._decryptor = AESCipher.new(self._aes_key, AESCipher.MODE_ECB)
+        
+        # Receive server's IV (RCBCacc - Receive CBC accumulator)
+        msg = await self._ws.receive()
+        if msg.type == WSMsgType.BINARY and len(msg.data) == 16:
+            self._rcbc_acc = bytearray(msg.data)
+            _LOGGER.debug("Received server IV (%d bytes)", len(self._rcbc_acc))
+        else:
+            raise ConnectionError(f"Expected 16-byte IV from server, got {msg.type}")
+
+        # Now sessionLevel will come as encrypted binary message
         session_level = await self._await_method("sessionLevel")
         self._session_level = session_level.get("params", {}).get("sessionLevel")
         self._login_success = True
@@ -203,8 +234,16 @@ class HomesideClient:
             
         Raises:
             ValueError: If variable format is invalid
+            PermissionError: If user session level doesn't allow write operations
             ConnectionError: If WebSocket is not connected
         """
+        # Guest (1) and None (0) users can only read, never write
+        if self._session_level is not None and self._session_level <= 1:
+            raise PermissionError(
+                f"Write operations not allowed for session level {self._session_level}. "
+                "Only Operator (2) and above can write."
+            )
+        
         if ":" not in variable:
             raise ValueError(f"Invalid variable format: {variable}. Expected 'device:item'")
         
@@ -263,7 +302,15 @@ class HomesideClient:
     async def _send_json(self, payload: dict[str, Any]) -> None:
         if not self._ws or self._ws.closed:
             raise ConnectionError("WebSocket is not connected")
-        await self._ws.send_json(payload)
+        
+        if self._authenticated:
+            # Send encrypted
+            json_str = json.dumps(payload)
+            encrypted = self._encrypt_message(json_str)
+            await self._ws.send_bytes(encrypted)
+        else:
+            # Send plain JSON
+            await self._ws.send_json(payload)
 
     async def _await_method(self, method: str) -> dict[str, Any]:
         return await self._await_message(method, field="method")
@@ -423,8 +470,19 @@ class HomesideClient:
             return data
 
         if msg.type == WSMsgType.BINARY:
-            _LOGGER.debug("Ignoring binary message len=%s", len(msg.data))
-            return None
+            # After authentication, binary messages are encrypted
+            if self._authenticated and self._rcbc_acc is not None:
+                try:
+                    decrypted_text = self._decrypt_message(msg.data)
+                    data = json.loads(decrypted_text)
+                    _LOGGER.debug("Decrypted message: %s", data.get("method", "unknown"))
+                    return data
+                except Exception as e:
+                    _LOGGER.error("Failed to decrypt message: %s", e)
+                    return None
+            else:
+                _LOGGER.debug("Ignoring binary message len=%s (not authenticated)", len(msg.data))
+                return None
 
         if msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSED, WSMsgType.ERROR):
             raise ConnectionError("WebSocket closed")
@@ -566,7 +624,9 @@ class HomesideClient:
         self, username: str, password: str, server_nonce: int
     ) -> tuple[int, int, int]:
         client_nonce2 = self._swap_end(self._rand_u32())
-        payload = f"{username}\x00{password}\x00".encode("utf-8")
+        # NOTE: Web UI converts username to lowercase before hashing
+        # See app.main.min.js.raw.js: i.toLowerCase()+String.fromCharCode(0)+r+String.fromCharCode(0)
+        payload = f"{username.lower()}\x00{password}\x00".encode("utf-8")
         digest = hashlib.sha256(payload).digest()
         words = [
             int.from_bytes(digest[i : i + 4], "big")
@@ -584,6 +644,9 @@ class HomesideClient:
             words[3] ^ words[7],
         ]
         key = b"".join(w.to_bytes(4, "big") for w in key_words)
+        
+        # Store AES key for later encryption/decryption
+        self._aes_key = key
 
         block_words = words[4:8]
         block = b"".join(w.to_bytes(4, "big") for w in block_words)
@@ -594,3 +657,83 @@ class HomesideClient:
         confirmation = self._swap_end(word1)
         response = self._swap_end(word0)
         return client_nonce2, response, confirmation
+
+    def _encrypt_message(self, text: str) -> bytes:
+        """Encrypt a text message using AES with custom CBC mode.
+        
+        Based on Web UI implementation in app.main.min.js.raw.js: Crypto_EncodeMsg
+        """
+        # Encode text to bytes
+        text_bytes = text.encode('utf-8')
+        
+        # Calculate padded size (multiple of 16)
+        padded_size = 16 * ((len(text_bytes) + 16) // 16)
+        
+        # Create output buffer
+        output = bytearray(padded_size)
+        
+        # Generate random IV for this message
+        import secrets
+        msg_iv = secrets.token_bytes(16)
+        
+        # Place IV at the end
+        output[-16:] = msg_iv
+        
+        # Copy text data
+        output[:len(text_bytes)] = text_bytes
+        
+        # Set length indicator in last byte (length % 16)
+        output[-1] = (output[-1] & 0xF0) | (len(text_bytes) % 16)
+        
+        # Encrypt each 16-byte block with CBC chaining
+        for i in range(0, len(output), 16):
+            # XOR block with SCBCacc (CBC mode)
+            block = bytearray(16)
+            for j in range(16):
+                block[j] = self._scbc_acc[j] ^ output[i + j]
+            
+            # Encrypt block
+            encrypted = self._encryptor.encrypt(bytes(block))
+            
+            # XOR encrypted result with original block and store
+            for j in range(16):
+                self._scbc_acc[j] = encrypted[j] ^ output[i + j]
+                output[i + j] = encrypted[j]
+        
+        return bytes(output)
+
+    def _decrypt_message(self, data: bytes) -> str:
+        """Decrypt a binary message using AES with custom CBC mode.
+        
+        Based on Web UI implementation in app.main.min.js.raw.js: Crypto_DecodeMsg
+        """
+        if len(data) % 16 != 0:
+            raise ValueError(f"Invalid encrypted message length: {len(data)}")
+        
+        output = bytearray(len(data))
+        
+        # Decrypt each 16-byte block
+        for i in range(0, len(data), 16):
+            # Get encrypted block
+            enc_block = data[i:i+16]
+            
+            # Decrypt block
+            decrypted = self._decryptor.decrypt(enc_block)
+            
+            # XOR with RCBCacc and store
+            for j in range(16):
+                output[i + j] = decrypted[j] ^ self._rcbc_acc[j]
+            
+            # Update RCBCacc for next block (CBC chaining)
+            for j in range(16):
+                self._rcbc_acc[j] = enc_block[j] ^ output[i + j]
+        
+        # Extract actual message length from last byte
+        msg_length = output[-1] & 0x0F
+        if msg_length == 0:
+            msg_length = len(output) - 16
+        else:
+            msg_length = len(output) - 16 + msg_length
+        
+        # Return decoded text
+        return output[:msg_length].decode('utf-8')
