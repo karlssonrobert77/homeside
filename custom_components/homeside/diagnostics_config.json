@@ -1,0 +1,181 @@
+{
+  "description": "Diagnostic sensor configurations for Homeside debug endpoints",
+  "update_interval": 1800,
+  "sensors": {
+    "heap_available": {
+      "name": "Heap Memory Available",
+      "unit": "bytes",
+      "icon": "mdi:memory",
+      "device_class": null,
+      "state_class": "measurement"
+    },
+    "heap_used": {
+      "name": "Heap Memory Used",
+      "unit": "bytes",
+      "icon": "mdi:memory",
+      "device_class": null,
+      "state_class": "measurement"
+    },
+    "heap_max": {
+      "name": "Heap Memory Max Used",
+      "unit": "bytes",
+      "icon": "mdi:memory",
+      "device_class": null,
+      "state_class": "measurement"
+    },
+    "heap_errors": {
+      "name": "Heap Memory Errors",
+      "unit": "errors",
+      "icon": "mdi:alert-circle",
+      "device_class": null,
+      "state_class": "total_increasing"
+    },
+    "os_version": {
+      "name": "OS Version",
+      "unit": null,
+      "icon": "mdi:chip",
+      "device_class": null,
+      "state_class": null
+    },
+    "exoline_sessions_active": {
+      "name": "EXOline Active Sessions",
+      "unit": "sessions",
+      "icon": "mdi:connection",
+      "device_class": null,
+      "state_class": "measurement"
+    },
+    "exoline_sessions_max": {
+      "name": "EXOline Max Sessions",
+      "unit": "sessions",
+      "icon": "mdi:connection",
+      "device_class": null,
+      "state_class": "measurement"
+    },
+    "external_connection": {
+      "name": "External Connection IP",
+      "unit": null,
+      "icon": "mdi:wan",
+      "device_class": null,
+      "state_class": null
+    },
+    "modbus_sessions_active": {
+      "name": "Modbus Active Sessions",
+      "unit": "sessions",
+      "icon": "mdi:connection",
+      "device_class": null,
+      "state_class": "measurement"
+    },
+    "modbus_sessions_max": {
+      "name": "Modbus Max Sessions",
+      "unit": "sessions",
+      "icon": "mdi:connection",
+      "device_class": null,
+      "state_class": "measurement"
+    },
+    "bacnet_version": {
+      "name": "BACnet Version",
+      "unit": null,
+      "icon": "mdi:information",
+      "device_class": null,
+      "state_class": null
+    },
+    "bacnet_device_id": {
+      "name": "BACnet Device ID",
+      "unit": null,
+      "icon": "mdi:identifier",
+      "device_class": null,
+      "state_class": null
+    },
+    "bacnet_build": {
+      "name": "BACnet Build",
+      "unit": null,
+      "icon": "mdi:hammer-wrench",
+      "device_class": null,
+      "state_class": null
+    },
+    "bacnet_mem_frame": {
+      "name": "BACnet Memory Frame",
+      "unit": "bytes",
+      "icon": "mdi:memory",
+      "device_class": null,
+      "state_class": "measurement"
+    },
+    "bacnet_mem_free": {
+      "name": "BACnet Memory Free",
+      "unit": "bytes",
+      "icon": "mdi:memory",
+      "device_class": null,
+      "state_class": "measurement"
+    },
+    "bacnet_alloc_result": {
+      "name": "BACnet Allocation Result",
+      "unit": null,
+      "icon": "mdi:check-circle",
+      "device_class": null,
+      "state_class": null
+    },
+    "network_ip": {
+      "name": "Network IP Address",
+      "unit": null,
+      "icon": "mdi:ip-network",
+      "device_class": null,
+      "state_class": null
+    },
+    "network_netmask": {
+      "name": "Network Netmask",
+      "unit": null,
+      "icon": "mdi:ip-network",
+      "device_class": null,
+      "state_class": null
+    },
+    "network_gateway": {
+      "name": "Network Gateway",
+      "unit": null,
+      "icon": "mdi:router-network",
+      "device_class": null,
+      "state_class": null
+    },
+    "network_dns1": {
+      "name": "Network DNS 1",
+      "unit": null,
+      "icon": "mdi:dns",
+      "device_class": null,
+      "state_class": null
+    },
+    "network_dns2": {
+      "name": "Network DNS 2",
+      "unit": null,
+      "icon": "mdi:dns",
+      "device_class": null,
+      "state_class": null
+    },
+    "os_commit": {
+      "name": "OS Commit Hash",
+      "unit": null,
+      "icon": "mdi:source-commit",
+      "device_class": null,
+      "state_class": null
+    },
+    "exocol_tasks_count": {
+      "name": "EXOcol Tasks Count",
+      "unit": "tasks",
+      "icon": "mdi:file-code",
+      "device_class": null,
+      "state_class": "measurement"
+    },
+    "exocol_tasks_total_size": {
+      "name": "EXOcol Tasks Total Size",
+      "unit": "bytes",
+      "icon": "mdi:harddisk",
+      "device_class": null,
+      "state_class": "measurement"
+    },
+    "exocol_dpacs_total_size": {
+      "name": "EXOcol DPacs Total Size",
+      "unit": "bytes",
+      "icon": "mdi:harddisk",
+      "device_class": null,
+      "state_class": "measurement"
+    }
+  }
+}

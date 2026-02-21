@@ -15,11 +15,15 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .client import HomesideClient
-from .const import DOMAIN, UPDATE_INTERVAL_SLOW
+from .const import DOMAIN, UPDATE_INTERVAL_SLOW, get_none_value_default
 
 _LOGGER = logging.getLogger(__name__)
 
 _VARIABLES_FILE = Path(__file__).resolve().parent / "variables.json"
+
+# Load variables.json once at module initialization to avoid blocking I/O warnings
+with open(_VARIABLES_FILE, "r", encoding="utf-8") as _f:
+    _VARIABLES_DATA = json.load(_f)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -36,6 +40,8 @@ class VariableConfig:
     min: float | None = None
     max: float | None = None
     step: float | None = None
+    unit: str | None = None
+    decimals: int | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -48,21 +54,13 @@ class HomesideNumberEntityDescription(NumberEntityDescription):
 
 def _load_number_configs() -> list[VariableConfig]:
     """Load writable number variables from variables.json."""
-    with open(_VARIABLES_FILE, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    
-    # Skip these patterns - they're not numbers
-    skip_patterns = [
-        "av/på",
-        "läge",
-        "(val)",
-        "mode",
-        "on/off",
-    ]
-    
     configs = []
-    for key, config in data.get("mapping", {}).items():
-        # Only include read_write variables with type "number" or writable sensors
+    for key, config in _VARIABLES_DATA.get("mapping", {}).items():
+        # Only include variables explicitly typed as "number"
+        if config.get("type") != "number":
+            continue
+            
+        # Only include read_write variables
         access = config.get("access", "read")
         if access != "read_write":
             continue
@@ -71,17 +69,12 @@ def _load_number_configs() -> list[VariableConfig]:
         if not config.get("enabled", False):
             continue
         
-        # Skip binary/select variables
-        name = config.get("name", "").lower()
-        if any(pattern in name for pattern in skip_patterns):
-            continue
-        
         configs.append(
             VariableConfig(
                 key=key,
                 name=config.get("name", f"Number {key}"),
                 enabled=config.get("enabled", False),
-                type="number",
+                type="number",  # Validated above - only type="number" variables loaded
                 note=config.get("note"),
                 access=access,
                 role_access=config.get("role_access"),
@@ -90,6 +83,8 @@ def _load_number_configs() -> list[VariableConfig]:
                 min=config.get("min"),
                 max=config.get("max"),
                 step=config.get("step"),
+                unit=config.get("unit"),
+                decimals=config.get("decimals"),
             )
         )
     
@@ -114,8 +109,10 @@ async def async_setup_entry(
     # Session-level filtering
     from .const import ROLE_HIERARCHY
     session_level = getattr(client, '_session_level', None)
-    allowed_roles = set()
-    if session_level is not None:
+    # Always set allowed_roles, even if session_level is None
+    if session_level is None:
+        allowed_roles = {ROLE_HIERARCHY[0]}
+    else:
         allowed_roles = set(ROLE_HIERARCHY[: session_level + 1])
     number_configs = [
         cfg for cfg in number_configs
@@ -125,9 +122,11 @@ async def async_setup_entry(
         _LOGGER.info("No writable number variables enabled")
         return
     
-    # Separate combined from regular numbers
-    combined_numbers = [cfg for cfg in number_configs if cfg.address]
-    regular_numbers = [cfg for cfg in number_configs if not cfg.address]
+    # Separate combined from regular numbers based on address count
+    # Regular: single address (writable control)
+    # Combined: multiple addresses (read-only formatted display)
+    regular_numbers = [cfg for cfg in number_configs if cfg.address and len(cfg.address) == 1]
+    combined_numbers = [cfg for cfg in number_configs if cfg.address and len(cfg.address) > 1]
     
     entities = []
     
@@ -151,6 +150,10 @@ async def async_setup_entry(
             max_val = config.max if config.max is not None else _DEFAULT_LIMITS["max"]
             step_val = config.step if config.step is not None else _DEFAULT_LIMITS["step"]
             
+            # Ensure step is int for integer-only fields (decimals=0)
+            if config.decimals == 0 and step_val == int(step_val):
+                step_val = int(step_val)
+            
             description = HomesideNumberEntityDescription(
                 key=config.address[0],
                 name=config.name,
@@ -170,24 +173,31 @@ async def async_setup_entry(
             variables = cfg.address
             
             async def _update_combined(vars=variables, fmt=cfg.format, cfg_name=cfg.name) -> dict[str, Any]:
-                await client.ensure_connected()
-                values, errors = await client.read_points_with_errors(vars)
-                
-                # Apply format template
-                if fmt and all(addr in values for addr in vars):
-                    try:
-                        formatted_value = fmt.format(*[values[addr] for addr in vars])
-                    except (KeyError, IndexError, ValueError) as e:
-                        _LOGGER.warning("Failed to format combined number %s: %s", cfg_name, e)
+                try:
+                    await client.ensure_connected()
+                    values, errors = await client.read_points_with_errors(vars)
+
+                    # Apply format template
+                    if fmt and all(addr in values for addr in vars):
+                        try:
+                            formatted_value = fmt.format(*[values[addr] for addr in vars])
+                        except (KeyError, IndexError, ValueError) as e:
+                            _LOGGER.warning("Failed to format combined number %s: %s", cfg_name, e)
+                            formatted_value = None
+                    else:
                         formatted_value = None
-                else:
-                    formatted_value = None
-                
-                return {
-                    "value": formatted_value,
-                    "sources": {addr: values.get(addr) for addr in vars},
-                    "errors": {addr: errors.get(addr) for addr in vars},
-                }
+
+                    return {
+                        "value": formatted_value,
+                        "sources": {addr: values.get(addr) for addr in vars},
+                        "errors": {addr: errors.get(addr) for addr in vars},
+                    }
+                except ConnectionError as err:
+                    _LOGGER.warning("Homeside connection error while reading combined number %s: %s", cfg_name, err)
+                    return {"value": None, "sources": {addr: None for addr in vars}, "errors": {}}
+                except Exception as err:  # pragma: no cover - defensive
+                    _LOGGER.exception("Unexpected error while reading combined number %s: %s", cfg_name, err)
+                    return {"value": None, "sources": {addr: None for addr in vars}, "errors": {}}
             
             combined_coordinator = DataUpdateCoordinator(
                 hass,
@@ -212,9 +222,16 @@ async def _async_update_numbers(
 ) -> dict[str, Any]:
     """Fetch current values for all number entities."""
     addresses = [cfg.address[0] for cfg in configs]
-    await client.ensure_connected()
-    values = await client.read_points(addresses)
-    return values
+    try:
+        await client.ensure_connected()
+        values = await client.read_points(addresses)
+        return values
+    except ConnectionError as err:
+        _LOGGER.warning("Homeside connection error while updating numbers: %s", err)
+        return {}
+    except Exception as err:  # pragma: no cover - defensive
+        _LOGGER.exception("Unexpected error while updating numbers: %s", err)
+        return {}
 
 
 class HomesideNumberEntity(NumberEntity):
@@ -249,6 +266,11 @@ class HomesideNumberEntity(NumberEntity):
         self._attr_native_max_value = description.max_value
         self._attr_native_step = description.step
         
+        # Set display precision based on decimals config
+        # For integer fields (decimals=0), explicitly set precision to 0
+        if config.decimals is not None:
+            self._attr_suggested_display_precision = config.decimals
+        
         # Determine appropriate icon based on variable name
         if "kurva" in config.name.lower():
             self._attr_icon = "mdi:chart-line"
@@ -260,28 +282,23 @@ class HomesideNumberEntity(NumberEntity):
             self._attr_icon = "mdi:tune"
     
     @property
-    def native_value(self) -> float | None:
+    def native_value(self) -> float | int | None:
         """Return the current value."""
         value = self.coordinator.data.get(self._config.address[0])
         # Try to get error info if available
         errors = getattr(self.coordinator, 'data', {}).get('errors', {}) if hasattr(self.coordinator, 'data') else {}
         error = errors.get(self._config.address[0]) if errors else None
-        # Load none_value_default from variables.json root
-        none_value_default = 0
-        try:
-            import json
-            from pathlib import Path
-            variables_file = Path(__file__).resolve().parent / "variables.json"
-            with open(variables_file, "r", encoding="utf-8") as f:
-                root = json.load(f)
-                none_value_default = root.get("none_value_dafault", 0)
-        except Exception:
-            pass
         if error and error.get("code") == 47 and value is None:
-            value = none_value_default
+            value = get_none_value_default()
         if value is None:
             return None
         try:
+            # Return int for integer-only variables (step=1 and decimals=0)
+            if (self._config.decimals == 0 or 
+                (self._attr_native_step is not None and 
+                 self._attr_native_step == int(self._attr_native_step) and 
+                 self._attr_native_step >= 1)):
+                return int(float(value))
             return float(value)
         except (ValueError, TypeError):
             return None
@@ -363,6 +380,12 @@ class HomesideCombinedNumberEntity(NumberEntity):
             "identifiers": {(DOMAIN, device_id)},
         }
         
+        # Apply unit and decimals from config if available
+        if config.unit:
+            self._attr_native_unit_of_measurement = config.unit
+        if config.decimals is not None:
+            self._attr_suggested_display_precision = config.decimals
+        
         # Combined numbers are read-only
         self._attr_native_min_value = 0.0
         self._attr_native_max_value = 100.0
@@ -380,20 +403,9 @@ class HomesideCombinedNumberEntity(NumberEntity):
         data = self.coordinator.data or {}
         value = data.get("value")
         errors = data.get("errors", {})
-        # Load none_value_default from variables.json root
-        none_value_default = 0
-        try:
-            import json
-            from pathlib import Path
-            variables_file = Path(__file__).resolve().parent / "variables.json"
-            with open(variables_file, "r", encoding="utf-8") as f:
-                root = json.load(f)
-                none_value_default = root.get("none_value_dafault", 0)
-        except Exception:
-            pass
         # If any error for a source is code 47 and value is None, use fallback
         if any((err and err.get("code") == 47 and value is None) for err in errors.values()):
-            value = none_value_default
+            value = get_none_value_default()
         if value is None:
             return None
         try:

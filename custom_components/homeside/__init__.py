@@ -6,15 +6,36 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .client import HomesideClient
-from .const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, DOMAIN, PLATFORMS
+from .const import (
+    CONF_HOST,
+    CONF_PASSWORD,
+    CONF_USERNAME,
+    CONF_KEEPALIVE_INTERVAL,
+    CONF_RECONNECT_DELAY,
+    DOMAIN,
+    PLATFORMS,
+)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     host = entry.data[CONF_HOST]
     username = entry.data.get(CONF_USERNAME, "")
     password = entry.data.get(CONF_PASSWORD, "")
+    
+    # Get options (with defaults)
+    options = entry.options
+    keepalive_interval = options.get(CONF_KEEPALIVE_INTERVAL, 30)
+    reconnect_delay = options.get(CONF_RECONNECT_DELAY, 5)
+    
     session = async_get_clientsession(hass)
-    client = HomesideClient(host, session, username=username, password=password)
+    client = HomesideClient(
+        host, 
+        session, 
+        username=username, 
+        password=password,
+        keepalive_interval=keepalive_interval,
+        reconnect_delay=reconnect_delay,
+    )
     await client.connect()
     
     # Create device in device registry
@@ -31,6 +52,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
         "client": client,
         "device_id": entry.entry_id,
+        "options": options,  # Store options for platforms to use
     }
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     

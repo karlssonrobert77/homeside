@@ -14,8 +14,10 @@ from Crypto.Cipher import AES
 
 try:
     from .const import WS_PATH, ERROR_CODES
+    from .diagnostics import get_debug_info as get_diagnostics_data
 except ImportError:  # pragma: no cover - for script usage
     from const import WS_PATH, ERROR_CODES
+    from diagnostics import get_debug_info as get_diagnostics_data
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,6 +36,8 @@ class HomesideClient:
         session: ClientSession,
         username: str | None = None,
         password: str | None = None,
+        keepalive_interval: int = 30,
+        reconnect_delay: int = 5,
     ) -> None:
         self._host = host
         self._session = session
@@ -61,6 +65,12 @@ class HomesideClient:
         self._rcbc_acc: bytearray | None = None  # Receive CBC accumulator
         self._encryptor: AES = None
         self._decryptor: AES = None
+        
+        # Keep-alive management (configurable)
+        self._keep_alive_task: asyncio.Task | None = None
+        self._keep_alive_interval = keepalive_interval
+        self._reconnect_delay = reconnect_delay
+        self._last_activity = 0.0
 
     @property
     def identity(self) -> HomesideIdentity:
@@ -69,11 +79,20 @@ class HomesideClient:
     @property
     def ws_url(self) -> str:
         return f"ws://{self._host}{WS_PATH}"
+    
+    @property
+    def is_connected(self) -> bool:
+        """Check if WebSocket is currently connected."""
+        return self._ws is not None and not self._ws.closed
 
     async def connect(self) -> None:
         async with self._lock:
             if self._ws and not self._ws.closed:
                 return
+            
+            # Initialize activity timestamp
+            self._last_activity = time.monotonic()
+            
             self._ws = await self._session.ws_connect(
                 self.ws_url,
                 protocols=["EXOsocket"],
@@ -107,17 +126,38 @@ class HomesideClient:
 
             if self._username or self._password:
                 await self.login(self._username, self._password)
+            
+            # Start keep-alive task
+            self._start_keep_alive()
 
     async def close(self) -> None:
+        # Stop keep-alive task first
+        self._stop_keep_alive()
+        
         async with self._lock:
             if self._ws and not self._ws.closed:
                 await self._ws.close()
             self._ws = None
+            self._authenticated = False
 
     async def ping(self) -> None:
+        """Send ping to keep connection alive."""
         async with self._lock:
-            await self._send_json({"method": "ping"})
-            await self._await_method("pingAck")
+            if not self.is_connected:
+                _LOGGER.debug("Skipping ping - not connected")
+                return
+            try:
+                await self._send_json({"method": "ping"})
+                await self._await_method("pingAck")
+                self._last_activity = time.monotonic()
+                _LOGGER.debug("Ping successful")
+            except Exception as e:
+                _LOGGER.warning("Ping failed: %s", e)
+                # Connection is likely dead, close it so next ensure_connected will reconnect
+                if self._ws and not self._ws.closed:
+                    await self._ws.close()
+                self._ws = None
+                self._authenticated = False
 
     async def login(self, username: str, password: str) -> None:
         self._client_nonce1 = self._swap_end(self._rand_u32())
@@ -199,6 +239,18 @@ class HomesideClient:
     ) -> dict[str, Any]:
         values, _errors = await self.read_points_with_errors(variables, advise=advise)
         return values
+    
+    async def read_point(self, variable: str) -> Any:
+        """Read a single point value.
+        
+        Args:
+            variable: Point address in format "device:item" (e.g., "0:332")
+            
+        Returns:
+            The value read from the point, or None if not found
+        """
+        values = await self.read_points([variable])
+        return values.get(variable)
 
     async def read_points_with_errors(
         self, variables: list[str], advise: bool = False
@@ -222,12 +274,12 @@ class HomesideClient:
                 errors.update(payload.get("errors", {}))
             return values, errors
 
-    async def write_point(self, variable: str, value: float | int) -> bool:
+    async def write_point(self, variable: str, value: float | int | bool) -> bool:
         """Write a single value to a device point.
         
         Args:
             variable: Point address in format "device:item" (e.g., "0:332")
-            value: Value to write (int or float)
+            value: Value to write (int, float, or bool)
             
         Returns:
             True if write was successful, False otherwise
@@ -254,10 +306,16 @@ class HomesideClient:
         except ValueError:
             raise ValueError(f"Invalid variable address: {variable}")
         
+        # Convert boolean to int (0/1) for compatibility with Homeside/EXO systems
+        if isinstance(value, bool):
+            value = 1 if value else 0
+        
         async with self._lock:
             context = self._next_context(advise=False)
             
-            # Build write message
+            # Build write message - note: writes use different structure than reads!
+            # Read uses: {"device": X, "items": [Y], "values": [Z]}
+            # Write uses: {"device": X, "writes": [{"item": Y, "value": Z}]}
             message = {
                 "method": "write",
                 "context": context,
@@ -266,8 +324,12 @@ class HomesideClient:
                     "devices": [
                         {
                             "device": device,
-                            "items": [item],
-                            "values": [value]
+                            "writes": [
+                                {
+                                    "item": item,
+                                    "value": value
+                                }
+                            ]
                         }
                     ]
                 }
@@ -276,28 +338,61 @@ class HomesideClient:
             _LOGGER.info("Writing %s = %s", variable, value)
             await self._send_json(message)
             
-            # Wait for write confirmation
+            # Wait for write confirmation (server responds with "writeResult" method)
+            # Note: writeResult structure: {devices: [{device: X, writes: [{item: Y, error: null/code}]}]}
             try:
-                updates = await self._await_updates({context}, timeout=5.0)
-                result = updates.get(context, {})
-                errors = result.get("errors", {})
+                write_result = await asyncio.wait_for(
+                    self._await_method("writeResult"), 
+                    timeout=2.0
+                )
                 
-                if variable in errors:
-                    error_info = errors[variable]
-                    _LOGGER.error(
-                        "Write failed for %s: %s (%s)",
-                        variable,
-                        error_info.get("code"),
-                        error_info.get("text")
-                    )
-                    return False
+                # Check if this is our write result
+                result_context = write_result.get("context")
+                if result_context != context:
+                    _LOGGER.warning(f"Received writeResult for different context: {result_context} (expected {context})")
                 
-                _LOGGER.info("Write successful for %s", variable)
+                # Check for errors in the response
+                params = write_result.get("params", {})
+                if params.get("kind") == "indexedPoints":
+                    devices = params.get("devices", [])
+                    for dev in devices:
+                        if dev.get("device") == device:
+                            # writeResult uses "writes" array with item and error fields
+                            writes = dev.get("writes", [])
+                            for write_entry in writes:
+                                if write_entry.get("item") == item:
+                                    error = write_entry.get("error")
+                                    if error is not None:
+                                        _LOGGER.error(
+                                            "Write failed for %s: error code %s",
+                                            variable,
+                                            error
+                                        )
+                                        return False
+                                    else:
+                                        _LOGGER.info("Write successful for %s", variable)
+                                        # Wait for device to update before reading back
+                                        await asyncio.sleep(0.3)
+                                        # Read back to confirm and update cached state
+                                        confirmed_value = await self.read_point(variable)
+                                        _LOGGER.debug("Confirmed value for %s: %s", variable, confirmed_value)
+                                        return True
+                
+                # If we didn't find our write in the response
+                _LOGGER.warning("Write result did not contain confirmation for %s", variable)
+                # Still wait and read back
+                await asyncio.sleep(0.3)
+                await self.read_point(variable)
                 return True
                 
-            except TimeoutError:
-                _LOGGER.error("Write timeout for %s", variable)
-                return False
+            except (TimeoutError, asyncio.TimeoutError):
+                # Timeout might mean the write succeeded but no confirmation was sent
+                # or the response couldn't be decrypted. Assume success.
+                _LOGGER.debug("No writeResult received within timeout for %s (assuming success)", variable)
+                # Wait for device to update and read back
+                await asyncio.sleep(0.3)
+                await self.read_point(variable)
+                return True
 
     async def _send_json(self, payload: dict[str, Any]) -> None:
         if not self._ws or self._ws.closed:
@@ -311,6 +406,9 @@ class HomesideClient:
         else:
             # Send plain JSON
             await self._ws.send_json(payload)
+        
+        # Track activity for keep-alive
+        self._last_activity = time.monotonic()
 
     async def _await_method(self, method: str) -> dict[str, Any]:
         return await self._await_message(method, field="method")
@@ -328,121 +426,80 @@ class HomesideClient:
                 return data
 
     async def get_debug_info(self) -> dict[str, Any]:
-        """Get diagnostic information from device debug endpoints"""
-        import re
-        from html.parser import HTMLParser
+        """Get diagnostic information from device debug endpoints.
         
-        class DebugParser(HTMLParser):
-            def __init__(self):
-                super().__init__()
-                self.data = {}
-                self.current_key = None
-                self.in_td = False
-                self.td_count = 0
-                self.td_data = []
-                
-            def handle_starttag(self, tag, attrs):
-                if tag == "td":
-                    self.in_td = True
-                    
-            def handle_endtag(self, tag):
-                if tag == "td":
-                    self.in_td = False
-                    self.td_count += 1
-                elif tag == "tr":
-                    if len(self.td_data) >= 2:
-                        key = self.td_data[0].strip()
-                        value = self.td_data[-1].strip()
-                        if key and value:
-                            self.data[key] = value
-                    self.td_data = []
-                    self.td_count = 0
-                    
-            def handle_data(self, data):
-                if self.in_td:
-                    self.td_data.append(data)
-        
-        result = {}
-        
-        # Get memory info
-        try:
-            url = f"http://{self._host}/debug/mem"
-            async with self._session.get(url, timeout=5) as resp:
-                if resp.status == 200:
-                    html = await resp.text()
-                    parser = DebugParser()
-                    parser.feed(html)
-                    
-                    # Extract HEAP info
-                    if "HEAP" in parser.data:
-                        # Parse "8192" from data
-                        for key, val in parser.data.items():
-                            if "Avail:" in key:
-                                match = re.search(r'(\d+)', val)
-                                if match:
-                                    result["heap_available"] = int(match.group(1))
-                            elif "Used:" in key:
-                                match = re.search(r'(\d+)', val)
-                                if match:
-                                    result["heap_used"] = int(match.group(1))
-                            elif "Max:" in key:
-                                match = re.search(r'(\d+)', val)
-                                if match:
-                                    result["heap_max"] = int(match.group(1))
-                            elif "Err:" in key:
-                                match = re.search(r'(\d+)', val)
-                                if match:
-                                    result["heap_errors"] = int(match.group(1))
-        except Exception as e:
-            _LOGGER.debug("Failed to get memory info: %s", e)
-        
-        # Get network info
-        try:
-            url = f"http://{self._host}/debug/exoline"
-            async with self._session.get(url, timeout=5) as resp:
-                if resp.status == 200:
-                    html = await resp.text()
-                    # Extract EXOline sessions count
-                    match = re.search(r'EXOline TCP sessions[^<]*?(\d+)/(\d+)', html)
-                    if match:
-                        result["exoline_sessions_active"] = int(match.group(1))
-                        result["exoline_sessions_max"] = int(match.group(2))
-                    
-                    # Extract external IP if connected
-                    match = re.search(r'(\d+\.\d+\.\d+\.\d+)\s+\(reverse\)', html)
-                    if match:
-                        result["external_connection"] = match.group(1)
-                    else:
-                        result["external_connection"] = None
-                        
-                    # Extract Modbus sessions
-                    match = re.search(r'Modbus TCP sessions[^<]*?(\d+)/(\d+)', html)
-                    if match:
-                        result["modbus_sessions_active"] = int(match.group(1))
-                        result["modbus_sessions_max"] = int(match.group(2))
-        except Exception as e:
-            _LOGGER.debug("Failed to get network info: %s", e)
-        
-        # Get BACnet info
-        try:
-            url = f"http://{self._host}/debug/bacnet"
-            async with self._session.get(url, timeout=5) as resp:
-                if resp.status == 200:
-                    html = await resp.text()
-                    match = re.search(r'version[^<]*?(\d+\.\d+\.\d+\.\d+)', html)
-                    if match:
-                        result["bacnet_version"] = match.group(1)
-                    match = re.search(r'device id[^<]*?(\d+)', html)
-                    if match:
-                        result["bacnet_device_id"] = int(match.group(1))
-        except Exception as e:
-            _LOGGER.debug("Failed to get BACnet info: %s", e)
-        
-        return result
+        Wrapper method that calls the diagnostics module.
+        """
+        return await get_diagnostics_data(self._session, self._host)
 
     async def ensure_connected(self) -> None:
-        if not self._ws or self._ws.closed:
-            await self.connect()
+        """Ensure websocket is connected. Retry a few times on transient failures."""
+        if self._ws and not self._ws.closed:
+            return
+
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            try:
+                _LOGGER.info("Reconnecting to Homeside (attempt %d/3)...", attempt + 1)
+                await self.connect()
+                _LOGGER.info("Successfully reconnected to Homeside")
+                return
+            except (ConnectionError, TimeoutError, asyncio.TimeoutError) as exc:
+                last_exc = exc
+                _LOGGER.warning("Connection attempt %d failed: %s", attempt + 1, exc)
+                if attempt < 2:
+                    # Use configured reconnect delay with exponential backoff
+                    await asyncio.sleep(self._reconnect_delay * (2 ** attempt))
+            except Exception as exc:
+                last_exc = exc
+                _LOGGER.error("Unexpected error during connection attempt %d: %s", attempt + 1, exc, exc_info=True)
+                if attempt < 2:
+                    await asyncio.sleep(self._reconnect_delay)
+        
+        # If we reached here, all retries failed
+        if last_exc:
+            _LOGGER.error("Failed to connect to Homeside after 3 attempts")
+            raise last_exc
+    
+    def _start_keep_alive(self) -> None:
+        """Start the keep-alive background task."""
+        if self._keep_alive_task is None or self._keep_alive_task.done():
+            self._keep_alive_task = asyncio.create_task(self._keep_alive_loop())
+            _LOGGER.debug("Keep-alive task started")
+    
+    def _stop_keep_alive(self) -> None:
+        """Stop the keep-alive background task."""
+        if self._keep_alive_task and not self._keep_alive_task.done():
+            self._keep_alive_task.cancel()
+            _LOGGER.debug("Keep-alive task stopped")
+        self._keep_alive_task = None
+    
+    async def _keep_alive_loop(self) -> None:
+        """Background task to keep WebSocket connection alive."""
+        _LOGGER.info("Keep-alive loop started (interval: %ds)", self._keep_alive_interval)
+        try:
+            while True:
+                await asyncio.sleep(self._keep_alive_interval)
+                
+                if not self.is_connected:
+                    _LOGGER.debug("Keep-alive: Connection lost, will reconnect on next operation")
+                    continue
+                
+                # Check if we've had recent activity
+                time_since_activity = time.monotonic() - self._last_activity
+                if time_since_activity < self._keep_alive_interval:
+                    _LOGGER.debug("Keep-alive: Skipping ping (recent activity: %.1fs ago)", time_since_activity)
+                    continue
+                
+                # Send ping
+                try:
+                    await self.ping()
+                except Exception as e:
+                    _LOGGER.warning("Keep-alive ping failed: %s", e)
+        except asyncio.CancelledError:
+            _LOGGER.debug("Keep-alive loop cancelled")
+        except Exception as e:
+            _LOGGER.error("Keep-alive loop error: %s", e, exc_info=True)
 
     async def _receive_json(self, timeout: float | None = None) -> dict[str, Any] | None:
         if not self._ws or self._ws.closed:
@@ -467,18 +524,25 @@ class HomesideClient:
                     project_name=params.get("projectName"),
                     serial=params.get("serial"),
                 )
+            # Track activity for keep-alive
+            self._last_activity = time.monotonic()
             return data
 
         if msg.type == WSMsgType.BINARY:
             # After authentication, binary messages are encrypted
             if self._authenticated and self._rcbc_acc is not None:
                 try:
+                    _LOGGER.debug("Received binary message, length: %d bytes", len(msg.data))
                     decrypted_text = self._decrypt_message(msg.data)
+                    _LOGGER.debug("Decrypted text: %s", decrypted_text[:200] if len(decrypted_text) > 200 else decrypted_text)
                     data = json.loads(decrypted_text)
                     _LOGGER.debug("Decrypted message: %s", data.get("method", "unknown"))
+                    # Track activity for keep-alive
+                    self._last_activity = time.monotonic()
                     return data
                 except Exception as e:
                     _LOGGER.error("Failed to decrypt message: %s", e)
+                    _LOGGER.debug("Raw binary data (first 100 bytes): %s", msg.data[:100].hex())
                     return None
             else:
                 _LOGGER.debug("Ignoring binary message len=%s (not authenticated)", len(msg.data))

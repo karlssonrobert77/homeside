@@ -25,15 +25,20 @@ from .const import (
     UPDATE_INTERVAL_NORMAL,
     UPDATE_INTERVAL_SLOW,
     UPDATE_INTERVAL_VERY_SLOW,
-    UPDATE_INTERVAL_DIAGNOSTIC,
-    DIAGNOSTIC_SENSORS,
+    get_diagnostic_sensors,
+    get_diagnostic_update_interval,
     SESSION_LEVEL_ROLES,
     ROLE_HIERARCHY,
+    get_none_value_default,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 _VARIABLES_FILE = Path(__file__).resolve().parent / "variables.json"
+
+# Load variables.json once at module initialization to avoid blocking I/O warnings
+with open(_VARIABLES_FILE, "r", encoding="utf-8") as _f:
+    _VARIABLES_DATA = json.load(_f)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -57,9 +62,18 @@ class HomesideSensorEntityDescription(SensorEntityDescription):
 
 
 SENSORS: tuple[HomesideSensorEntityDescription, ...] = (
-    HomesideSensorEntityDescription(key="controller", name="Homeside Controller"),
-    HomesideSensorEntityDescription(key="project", name="Homeside Project"),
-    HomesideSensorEntityDescription(key="serial", name="Homeside Serial"),
+    HomesideSensorEntityDescription(
+        key="controller",
+        name="Homeside Controller",
+    ),
+    HomesideSensorEntityDescription(
+        key="project",
+        name="Homeside Project",
+    ),
+    HomesideSensorEntityDescription(
+        key="serial",
+        name="Homeside Serial",
+    ),
 )
 
 
@@ -75,14 +89,21 @@ async def async_setup_entry(
     show_diagnostic = entry.options.get("show_diagnostic", entry.data.get("show_diagnostic", False))
 
     async def _update() -> dict[str, Any]:
-        await client.ensure_connected()
-        await client.ping()
-        ident = client.identity
-        return {
-            "controller": ident.controller_name,
-            "project": ident.project_name,
-            "serial": ident.serial,
-        }
+        try:
+            await client.ensure_connected()
+            await client.ping()
+            ident = client.identity
+            return {
+                "controller": ident.controller_name,
+                "project": ident.project_name,
+                "serial": ident.serial,
+            }
+        except ConnectionError as err:
+            _LOGGER.warning("Homeside connection error in identity update: %s", err)
+            return {"controller": None, "project": None, "serial": None}
+        except Exception as err:  # pragma: no cover - defensive
+            _LOGGER.exception("Unexpected error in identity update: %s", err)
+            return {"controller": None, "project": None, "serial": None}
 
     coordinator = DataUpdateCoordinator(
         hass,
@@ -95,18 +116,19 @@ async def async_setup_entry(
     await coordinator.async_refresh()
     entities: list[SensorEntity] = []
     
-    # Only add identity sensors if diagnostic is enabled
-    if show_diagnostic:
-        entities.extend([
-            HomesideIdentitySensor(coordinator, description, device_id) for description in SENSORS
-        ])
+    # Always add identity sensors (not controlled by show_diagnostic)
+    entities.extend([
+        HomesideIdentitySensor(coordinator, description, device_id) for description in SENSORS
+    ])
 
     variable_configs = _load_variable_configs()
     # Session-level filtering
     from .const import ROLE_HIERARCHY
     session_level = getattr(client, '_session_level', None)
-    allowed_roles = set()
-    if session_level is not None:
+    # Always set allowed_roles, even if session_level is None
+    if session_level is None:
+        allowed_roles = {ROLE_HIERARCHY[0]}
+    else:
         allowed_roles = set(ROLE_HIERARCHY[: session_level + 1])
     sensor_configs = [
         cfg for cfg in variable_configs
@@ -156,20 +178,27 @@ async def async_setup_entry(
             role_by_address = {cfg.address[0]: cfg.role_access for cfg in group_configs}
 
             async def _update_variables(vars=variables, names=name_by_address, notes=note_by_address, access=access_by_address, roles=role_by_address) -> dict[str, Any]:
-                await client.ensure_connected()
-                values, errors = await client.read_points_with_errors(vars)
-                mapped_values = {names[address]: values.get(address) for address in vars}
-                mapped_errors = {names[address]: errors.get(address) for address in vars}
-                mapped_notes = {names[address]: notes.get(address) for address in vars}
-                mapped_access = {names[address]: access.get(address) for address in vars}
-                mapped_roles = {names[address]: roles.get(address) for address in vars}
-                return {
-                    "values": mapped_values,
-                    "errors": mapped_errors,
-                    "notes": mapped_notes,
-                    "access": mapped_access,
-                    "role_access": mapped_roles,
-                }
+                try:
+                    await client.ensure_connected()
+                    values, errors = await client.read_points_with_errors(vars)
+                    mapped_values = {names[address]: values.get(address) for address in vars}
+                    mapped_errors = {names[address]: errors.get(address) for address in vars}
+                    mapped_notes = {names[address]: notes.get(address) for address in vars}
+                    mapped_access = {names[address]: access.get(address) for address in vars}
+                    mapped_roles = {names[address]: roles.get(address) for address in vars}
+                    return {
+                        "values": mapped_values,
+                        "errors": mapped_errors,
+                        "notes": mapped_notes,
+                        "access": mapped_access,
+                        "role_access": mapped_roles,
+                    }
+                except ConnectionError as err:
+                    _LOGGER.warning("Homeside connection error while reading variables: %s", err)
+                    return {"values": {}, "errors": {}, "notes": {}, "access": {}, "role_access": {}}
+                except Exception as err:  # pragma: no cover - defensive
+                    _LOGGER.exception("Unexpected error while reading variables: %s", err)
+                    return {"values": {}, "errors": {}, "notes": {}, "access": {}, "role_access": {}}
 
             variables_coordinator = DataUpdateCoordinator(
                 hass,
@@ -195,24 +224,31 @@ async def async_setup_entry(
             variables = cfg.address
             
             async def _update_combined(vars=variables, fmt=cfg.format, cfg_name=cfg.name) -> dict[str, Any]:
-                await client.ensure_connected()
-                values, errors = await client.read_points_with_errors(vars)
-                
-                # Apply format template
-                if fmt and all(addr in values for addr in vars):
-                    try:
-                        formatted_value = fmt.format(*[values[addr] for addr in vars])
-                    except (KeyError, IndexError, ValueError) as e:
-                        _LOGGER.warning("Failed to format combined sensor %s: %s", cfg_name, e)
+                try:
+                    await client.ensure_connected()
+                    values, errors = await client.read_points_with_errors(vars)
+
+                    # Apply format template
+                    if fmt and all(addr in values for addr in vars):
+                        try:
+                            formatted_value = fmt.format(*[values[addr] for addr in vars])
+                        except (KeyError, IndexError, ValueError) as e:
+                            _LOGGER.warning("Failed to format combined sensor %s: %s", cfg_name, e)
+                            formatted_value = None
+                    else:
                         formatted_value = None
-                else:
-                    formatted_value = None
-                
-                return {
-                    "value": formatted_value,
-                    "sources": {addr: values.get(addr) for addr in vars},
-                    "errors": {addr: errors.get(addr) for addr in vars},
-                }
+
+                    return {
+                        "value": formatted_value,
+                        "sources": {addr: values.get(addr) for addr in vars},
+                        "errors": {addr: errors.get(addr) for addr in vars},
+                    }
+                except ConnectionError as err:
+                    _LOGGER.warning("Homeside connection error while reading combined %s: %s", cfg_name, err)
+                    return {"value": None, "sources": {addr: None for addr in vars}, "errors": {}}
+                except Exception as err:  # pragma: no cover - defensive
+                    _LOGGER.exception("Unexpected error while reading combined %s: %s", cfg_name, err)
+                    return {"value": None, "sources": {addr: None for addr in vars}, "errors": {}}
             
             combined_coordinator = DataUpdateCoordinator(
                 hass,
@@ -230,21 +266,34 @@ async def async_setup_entry(
     # Add diagnostic sensors (only if show_diagnostic is enabled)
     if show_diagnostic:
         async def _update_diagnostics() -> dict[str, Any]:
-            await client.ensure_connected()
-            return await client.get_debug_info()
+            try:
+                await client.ensure_connected()
+                return await client.get_debug_info()
+            except ConnectionError as err:
+                _LOGGER.warning("Homeside connection error in diagnostics update: %s", err)
+                return {}
+            except Exception as err:  # pragma: no cover - defensive
+                _LOGGER.exception("Unexpected error in diagnostics update: %s", err)
+                return {}
+        
+        # Get diagnostic update interval from config
+        diagnostic_interval = get_diagnostic_update_interval()
         
         diagnostic_coordinator = DataUpdateCoordinator(
             hass,
             logger=_LOGGER,
             name="homeside_diagnostics",
             update_method=_update_diagnostics,
-            update_interval=timedelta(seconds=UPDATE_INTERVAL_DIAGNOSTIC),
+            update_interval=timedelta(seconds=diagnostic_interval),
         )
         
         await diagnostic_coordinator.async_refresh()
+        
+        # Load diagnostic sensors from config file
+        diagnostic_sensors = get_diagnostic_sensors()
         entities.extend(
             HomesideDiagnosticSensor(diagnostic_coordinator, sensor_key, sensor_config, device_id)
-            for sensor_key, sensor_config in DIAGNOSTIC_SENSORS.items()
+            for sensor_key, sensor_config in diagnostic_sensors.items()
         )
 
     async_add_entities(entities)
@@ -261,6 +310,7 @@ class HomesideIdentitySensor(SensorEntity):
     ) -> None:
         self._coordinator = coordinator
         self.entity_description = description
+        # Identity sensors in main device (not diagnostics)
         self._device_id = device_id
         self._attr_unique_id = f"homeside_{description.key}"
 
@@ -325,19 +375,8 @@ class HomesideVariableSensor(SensorEntity):
         errors = data.get("errors", {})
         value = values.get(self._name)
         error = errors.get(self._name)
-        # Load none_value_default from variables.json root
-        none_value_default = 0
-        try:
-            import json
-            from pathlib import Path
-            variables_file = Path(__file__).resolve().parent / "variables.json"
-            with open(variables_file, "r", encoding="utf-8") as f:
-                root = json.load(f)
-                none_value_default = root.get("none_value_dafault", 0)
-        except Exception:
-            pass
         if error and error.get("code") == 47 and value is None:
-            return none_value_default
+            return get_none_value_default()
         return value
 
     @property
@@ -410,20 +449,9 @@ class HomesideCombinedSensor(SensorEntity):
         data = self._coordinator.data or {}
         value = data.get("value")
         errors = data.get("errors", {})
-        # Load none_value_default from variables.json root
-        none_value_default = 0
-        try:
-            import json
-            from pathlib import Path
-            variables_file = Path(__file__).resolve().parent / "variables.json"
-            with open(variables_file, "r", encoding="utf-8") as f:
-                root = json.load(f)
-                none_value_default = root.get("none_value_dafault", 0)
-        except Exception:
-            pass
         # If any error for a source is code 47 and value is None, use fallback
         if any((err and err.get("code") == 47 and value is None) for err in errors.values()):
-            return none_value_default
+            return get_none_value_default()
         return value
 
     @property
@@ -481,7 +509,8 @@ class HomesideDiagnosticSensor(SensorEntity):
     ) -> None:
         self._coordinator = coordinator
         self._sensor_key = sensor_key
-        self._device_id = device_id
+        # Group diagnostic sensors in separate device
+        self._device_id = f"{device_id}_diagnostics"
         self._attr_unique_id = f"homeside_diag_{sensor_key}"
         self._attr_name = sensor_config["name"]
         self._attr_native_unit_of_measurement = sensor_config["unit"]
@@ -492,6 +521,16 @@ class HomesideDiagnosticSensor(SensorEntity):
     @property
     def device_info(self):
         from .const import DOMAIN
+        
+        # Create separate device for diagnostics with proper name
+        if "_diagnostics" in self._device_id:
+            return {
+                "identifiers": {(DOMAIN, self._device_id)},
+                "name": "Homeside Diagnostik",
+                "manufacturer": "HomeSide",
+                "model": "Diagnostics",
+            }
+        
         return {
             "identifiers": {(DOMAIN, self._device_id)},
         }
@@ -510,15 +549,7 @@ class HomesideDiagnosticSensor(SensorEntity):
 
 
 def _load_variable_configs() -> list[VariableConfig]:
-    if not _VARIABLES_FILE.exists():
-        return []
-
-    try:
-        raw = json.loads(_VARIABLES_FILE.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        _LOGGER.warning("Failed to read variables mapping: %s", exc)
-        return []
-
+    raw = _VARIABLES_DATA
     default_role_access = raw.get("role_access_default") or "Guest"
 
     configs: list[VariableConfig] = []

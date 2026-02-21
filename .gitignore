@@ -43,3 +43,8 @@ tools/
 !README.md
 !LICENSE
 !hacs.json
+
+
+
+
+ha-test/*

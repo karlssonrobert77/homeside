@@ -17,6 +17,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .client import HomesideClient
 from .const import (
     DOMAIN,
+    CONF_SHOW_DIAGNOSTIC,
     FAST_UPDATE_PATTERNS,
     NORMAL_UPDATE_PATTERNS,
     SLOW_UPDATE_PATTERNS,
@@ -25,11 +26,16 @@ from .const import (
     UPDATE_INTERVAL_NORMAL,
     UPDATE_INTERVAL_SLOW,
     UPDATE_INTERVAL_VERY_SLOW,
+    get_none_value_default,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 _VARIABLES_FILE = Path(__file__).resolve().parent / "variables.json"
+
+# Load variables.json once at module initialization to avoid blocking I/O warnings
+with open(_VARIABLES_FILE, "r", encoding="utf-8") as _f:
+    _VARIABLES_DATA = json.load(_f)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -43,6 +49,8 @@ class VariableConfig:
     role_access: str | None = None
     address: list[str]  # Address(es) for this entity
     format: str | None = None
+    device_class: str | None = None  # HA device class (problem, door, etc.)
+    invert: bool = False  # If True, invert the boolean value
 
 
 async def async_setup_entry(
@@ -52,20 +60,28 @@ async def async_setup_entry(
 ) -> None:
     client: HomesideClient = hass.data[DOMAIN][entry.entry_id]["client"]
     device_id = hass.data[DOMAIN][entry.entry_id]["device_id"]
+    
+    # Check if diagnostic sensors should be shown
+    show_diagnostic = entry.options.get(CONF_SHOW_DIAGNOSTIC, entry.data.get(CONF_SHOW_DIAGNOSTIC, False))
 
     variable_configs = _load_variable_configs()
     # Session-level filtering
     from .const import ROLE_HIERARCHY
     session_level = getattr(client, '_session_level', None)
-    allowed_roles = set()
-    if session_level is not None:
+    # Always set allowed_roles, even if session_level is None
+    if session_level is None:
+        allowed_roles = {ROLE_HIERARCHY[0]}
+    else:
         allowed_roles = set(ROLE_HIERARCHY[: session_level + 1])
+    
+    # Pre-filter binary sensors based on role access
     binary_configs = [
         cfg for cfg in variable_configs
         if cfg.enabled and cfg.type == "binary_sensor" and (
             not cfg.role_access or cfg.role_access in allowed_roles
         )
     ]
+    
     if not binary_configs:
         return
 
@@ -111,20 +127,27 @@ async def async_setup_entry(
         role_by_address = {cfg.address[0]: cfg.role_access for cfg in group_configs}
 
         async def _update_variables(vars=variables, names=name_by_address, notes=note_by_address, access=access_by_address, roles=role_by_address) -> dict[str, Any]:
-            await client.ensure_connected()
-            values, errors = await client.read_points_with_errors(vars)
-            mapped_values = {names[address]: values.get(address) for address in vars}
-            mapped_errors = {names[address]: errors.get(address) for address in vars}
-            mapped_notes = {names[address]: notes.get(address) for address in vars}
-            mapped_access = {names[address]: access.get(address) for address in vars}
-            mapped_roles = {names[address]: roles.get(address) for address in vars}
-            return {
-                "values": mapped_values,
-                "errors": mapped_errors,
-                "notes": mapped_notes,
-                "access": mapped_access,
-                "role_access": mapped_roles,
-            }
+            try:
+                await client.ensure_connected()
+                values, errors = await client.read_points_with_errors(vars)
+                mapped_values = {names[address]: values.get(address) for address in vars}
+                mapped_errors = {names[address]: errors.get(address) for address in vars}
+                mapped_notes = {names[address]: notes.get(address) for address in vars}
+                mapped_access = {names[address]: access.get(address) for address in vars}
+                mapped_roles = {names[address]: roles.get(address) for address in vars}
+                return {
+                    "values": mapped_values,
+                    "errors": mapped_errors,
+                    "notes": mapped_notes,
+                    "access": mapped_access,
+                    "role_access": mapped_roles,
+                }
+            except ConnectionError as err:
+                _LOGGER.warning("Homeside connection error while reading binary variables: %s", err)
+                return {"values": {}, "errors": {}, "notes": {}, "access": {}, "role_access": {}}
+            except Exception as err:  # pragma: no cover - defensive
+                _LOGGER.exception("Unexpected error while reading binary variables: %s", err)
+                return {"values": {}, "errors": {}, "notes": {}, "access": {}, "role_access": {}}
 
         variables_coordinator = DataUpdateCoordinator(
             hass,
@@ -136,7 +159,7 @@ async def async_setup_entry(
 
         await variables_coordinator.async_refresh()
         entities.extend(
-            HomesideVariableBinarySensor(variables_coordinator, cfg.name, device_id)
+            HomesideVariableBinarySensor(variables_coordinator, cfg, device_id)
             for cfg in group_configs
         )
     
@@ -149,24 +172,31 @@ async def async_setup_entry(
             variables = cfg.address
             
             async def _update_combined(vars=variables, fmt=cfg.format, cfg_name=cfg.name) -> dict[str, Any]:
-                await client.ensure_connected()
-                values, errors = await client.read_points_with_errors(vars)
-                
-                # Apply format template
-                if fmt and all(addr in values for addr in vars):
-                    try:
-                        formatted_value = fmt.format(*[values[addr] for addr in vars])
-                    except (KeyError, IndexError, ValueError) as e:
-                        _LOGGER.warning("Failed to format combined binary sensor %s: %s", cfg_name, e)
+                try:
+                    await client.ensure_connected()
+                    values, errors = await client.read_points_with_errors(vars)
+
+                    # Apply format template
+                    if fmt and all(addr in values for addr in vars):
+                        try:
+                            formatted_value = fmt.format(*[values[addr] for addr in vars])
+                        except (KeyError, IndexError, ValueError) as e:
+                            _LOGGER.warning("Failed to format combined binary sensor %s: %s", cfg_name, e)
+                            formatted_value = None
+                    else:
                         formatted_value = None
-                else:
-                    formatted_value = None
-                
-                return {
-                    "value": formatted_value,
-                    "sources": {addr: values.get(addr) for addr in vars},
-                    "errors": {addr: errors.get(addr) for addr in vars},
-                }
+
+                    return {
+                        "value": formatted_value,
+                        "sources": {addr: values.get(addr) for addr in vars},
+                        "errors": {addr: errors.get(addr) for addr in vars},
+                    }
+                except ConnectionError as err:
+                    _LOGGER.warning("Homeside connection error while reading combined binary %s: %s", cfg_name, err)
+                    return {"value": None, "sources": {addr: None for addr in vars}, "errors": {}}
+                except Exception as err:  # pragma: no cover - defensive
+                    _LOGGER.exception("Unexpected error while reading combined binary %s: %s", cfg_name, err)
+                    return {"value": None, "sources": {addr: None for addr in vars}, "errors": {}}
             
             combined_coordinator = DataUpdateCoordinator(
                 hass,
@@ -190,19 +220,28 @@ class HomesideVariableBinarySensor(BinarySensorEntity):
     def __init__(
         self,
         coordinator: DataUpdateCoordinator,
-        name: str,
+        config: VariableConfig,
         device_id: str,
     ) -> None:
         self._coordinator = coordinator
-        self._name = name
-        self._device_id = device_id
-        self._attr_unique_id = f"homeside_var_{name}"
+        self._config = config
+        self._name = config.name
         
-        # Set entity category based on binary sensor type
-        name_lower = name.lower()
-        if any(word in name_lower for word in ['val', 'status']):
-            # Configuration switches (selection of sensors/modes)
-            self._attr_entity_category = EntityCategory.CONFIG
+        # Determine device grouping - only group alarms
+        name_lower = config.name.lower()
+        is_alarm = config.device_class == "problem" or "larm" in name_lower or "alarm" in name_lower
+        
+        # Group alarms in separate device
+        if is_alarm:
+            self._device_id = f"{device_id}_alarms"
+        else:
+            self._device_id = device_id
+            
+        self._attr_unique_id = f"homeside_var_{config.key.replace(':', '_').replace('/', '_')}"
+        
+        # Set device class if specified
+        if config.device_class:
+            self._attr_device_class = config.device_class
 
     @property
     def name(self) -> str | None:
@@ -211,6 +250,16 @@ class HomesideVariableBinarySensor(BinarySensorEntity):
     @property
     def device_info(self):
         from .const import DOMAIN
+        
+        # Create separate device for alarms with proper name
+        if "_alarms" in self._device_id:
+            return {
+                "identifiers": {(DOMAIN, self._device_id)},
+                "name": "Homeside Larm",
+                "manufacturer": "HomeSide",
+                "model": "Alarm Panel",
+            }
+        
         return {
             "identifiers": {(DOMAIN, self._device_id)},
         }
@@ -226,24 +275,24 @@ class HomesideVariableBinarySensor(BinarySensorEntity):
         errors = data.get("errors", {})
         value = values.get(self._name)
         error = errors.get(self._name)
-        # Load none_value_default from variables.json root
-        none_value_default = 0
-        try:
-            import json
-            from pathlib import Path
-            variables_file = Path(__file__).resolve().parent / "variables.json"
-            with open(variables_file, "r", encoding="utf-8") as f:
-                root = json.load(f)
-                none_value_default = root.get("none_value_dafault", 0)
-        except Exception:
-            pass
         if error and error.get("code") == 47 and value is None:
-            value = none_value_default
+            value = get_none_value_default()
         if value is None:
             return None
+        
+        # Convert to boolean
         if isinstance(value, bool):
-            return value
-        return bool(value)
+            bool_value = value
+        else:
+            bool_value = bool(value)
+        
+        # Apply inversion logic:
+        # 1. Explicit invert flag from config
+        # 2. Auto-invert for device_class "problem" (alarms are inverted in Homeside)
+        should_invert = self._config.invert or (self._config.device_class == "problem")
+        if should_invert:
+            return not bool_value
+        return bool_value
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
@@ -287,8 +336,22 @@ class HomesideCombinedBinarySensor(BinarySensorEntity):
         self._coordinator = coordinator
         self._config = config
         self._name = config.name
-        self._device_id = device_id
+        
+        # Determine device grouping for combined sensors
+        name_lower = config.name.lower()
+        is_alarm = config.device_class == "problem" or "larm" in name_lower or "alarm" in name_lower
+        
+        # Group alarms in separate device (combined sensors typically not diagnostic)
+        if is_alarm:
+            self._device_id = f"{device_id}_alarms"
+        else:
+            self._device_id = device_id
+            
         self._attr_unique_id = f"homeside_combined_binary_{config.key.replace(':', '_').replace('/', '_')}"
+        
+        # Set device class if specified
+        if config.device_class:
+            self._attr_device_class = config.device_class
 
     @property
     def name(self) -> str | None:
@@ -297,6 +360,16 @@ class HomesideCombinedBinarySensor(BinarySensorEntity):
     @property
     def device_info(self):
         from .const import DOMAIN
+        
+        # Create separate device for alarms with proper name
+        if "_alarms" in self._device_id:
+            return {
+                "identifiers": {(DOMAIN, self._device_id)},
+                "name": "Homeside Larm",
+                "manufacturer": "HomeSide",
+                "model": "Alarm Panel",
+            }
+        
         return {
             "identifiers": {(DOMAIN, self._device_id)},
         }
@@ -310,28 +383,25 @@ class HomesideCombinedBinarySensor(BinarySensorEntity):
         data = self._coordinator.data or {}
         value = data.get("value")
         errors = data.get("errors", {})
-        # Load none_value_default from variables.json root
-        none_value_default = 0
-        try:
-            import json
-            from pathlib import Path
-            variables_file = Path(__file__).resolve().parent / "variables.json"
-            with open(variables_file, "r", encoding="utf-8") as f:
-                root = json.load(f)
-                none_value_default = root.get("none_value_dafault", 0)
-        except Exception:
-            pass
         # If any error for a source is code 47 and value is None, use fallback
         if any((err and err.get("code") == 47 and value is None) for err in errors.values()):
-            value = none_value_default
+            value = get_none_value_default()
         if value is None:
             return None
+        
+        # Convert to boolean
         if isinstance(value, bool):
-            return value
-        # Try to convert to bool
-        if isinstance(value, str):
-            return value.lower() in ('true', '1', 'on', 'yes')
-        return bool(value)
+            bool_value = value
+        elif isinstance(value, str):
+            bool_value = value.lower() in ('true', '1', 'on', 'yes')
+        else:
+            bool_value = bool(value)
+        
+        # Apply inversion logic
+        should_invert = self._config.invert or (self._config.device_class == "problem")
+        if should_invert:
+            return not bool_value
+        return bool_value
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
@@ -368,15 +438,7 @@ class HomesideCombinedBinarySensor(BinarySensorEntity):
 
 
 def _load_variable_configs() -> list[VariableConfig]:
-    if not _VARIABLES_FILE.exists():
-        return []
-
-    try:
-        raw = json.loads(_VARIABLES_FILE.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        _LOGGER.warning("Failed to read variables mapping: %s", exc)
-        return []
-
+    raw = _VARIABLES_DATA
     default_role_access = raw.get("role_access_default") or "Guest"
 
     configs: list[VariableConfig] = []
@@ -399,6 +461,8 @@ def _load_variable_configs() -> list[VariableConfig]:
         access = info.get("access")
         role_access = info.get("role_access") or default_role_access
         format_template = info.get("format")
+        device_class = info.get("device_class")
+        invert = bool(info.get("invert", False))
         
         configs.append(
             VariableConfig(
@@ -411,6 +475,8 @@ def _load_variable_configs() -> list[VariableConfig]:
                 role_access=role_access,
                 address=address,
                 format=format_template,
+                device_class=device_class,
+                invert=invert,
             )
         )
     return configs

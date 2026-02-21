@@ -1,6 +1,6 @@
 {
   "role_access_default": "None",
-  "none_value_dafault": 0,
+  "none_value_default": 0,
   "mapping": {
     "version": {
       "enabled": true,
@@ -23,7 +23,7 @@
       "name": "Vattensensor mottagning 10 (RSSI)",
       "note": "",
       "access": "read",
-      "role_access": "None",
+      "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:3"
@@ -47,21 +47,23 @@
       "name": "VV1_GT_TAPP (tappvarmvatten)",
       "note": "",
       "access": "read",
-      "role_access": "None",
+      "role_access": "Guest",
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature",
       "format": "{0}",
       "address": [
         "0:10"
       ]
     },
-    "Var_0_12": {
+    "VATTENLACKAGESENSOR_5_MOTTAGNING": {
       "enabled": true,
       "type": "sensor",
-      "note": "",
+      "name": "Vattenläck sensor 5 mottagning",
+      "note": "Signal strength for water leak sensor 5",
       "access": "read",
       "role_access": "Guest",
+      "unit": "dB",
       "format": "{0}",
       "address": [
         "0:12"
@@ -79,11 +81,11 @@
         "0:17"
       ]
     },
-    "Found_0:25_0_25": {
+    "SKRIV_RUMSGIVARE_3": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Found 0:25",
-      "note": "",
+      "type": "switch",
+      "name": "Skriv rumsgivare 3",
+      "note": "Write button for room sensor 3",
       "access": "read_write",
       "role_access": "Operator",
       "format": "{0}",
@@ -91,11 +93,11 @@
         "0:25"
       ]
     },
-    "Found_0:55_0_55": {
+    "SKRIV_RUMSGIVARE_4": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Found 0:55",
-      "note": "",
+      "type": "switch",
+      "name": "Skriv rumsgivare 4",
+      "note": "Write button for room sensor 4",
       "access": "read_write",
       "role_access": "Operator",
       "format": "{0}",
@@ -115,9 +117,9 @@
         "0:71"
       ]
     },
-    "Sym_Ytterbelysning": {
+    "Ytterbelysning": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Ytterbelysning",
       "note": "",
       "access": "read_write",
@@ -132,7 +134,7 @@
       "type": "sensor",
       "name": "Longitude",
       "note": "",
-      "access": "read",
+      "access": "read_write",
       "role_access": "Guest",
       "format": "{0}",
       "address": [
@@ -144,7 +146,7 @@
       "type": "sensor",
       "name": "Tryckgivare skalning",
       "note": "",
-      "access": "read/write",
+      "access": "read_write",
       "role_access": "Admin",
       "format": "{0}",
       "address": [
@@ -159,32 +161,32 @@
       "type": "sensor",
       "name": "Latitude",
       "note": "",
-      "access": "read/write",
+      "access": "read_write",
       "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:89"
       ]
     },
-    "Found_in_UI_0:118_0_118": {
+    "KURVA_INTERNAL_1": {
       "enabled": true,
       "type": "sensor",
-      "name": "Found in UI 0:118",
-      "note": "",
+      "name": "Kurva intern variabel 1",
+      "note": "Internal curve variable",
       "access": "read",
-      "role_access": "Guest",
+      "role_access": "Service",
       "format": "{0}",
       "address": [
         "0:118"
       ]
     },
-    "Found_in_UI_0:122_0_122": {
+    "KURVA_INTERNAL_2": {
       "enabled": true,
       "type": "sensor",
-      "name": "Found in UI 0:122",
-      "note": "",
+      "name": "Kurva intern variabel 2",
+      "note": "Internal curve variable",
       "access": "read",
-      "role_access": "Guest",
+      "role_access": "Service",
       "format": "{0}",
       "address": [
         "0:122"
@@ -192,43 +194,43 @@
     },
     "VALUE_FLODESVAKT": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Flödesvakt",
       "note": "",
-      "access": "read",
+      "access": "read_write",
       "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:123"
       ]
     },
-    "Found_in_UI_0:127_0_127": {
+    "KURVA_INTERNAL_3": {
       "enabled": true,
       "type": "sensor",
-      "name": "Found in UI 0:127",
-      "note": "",
+      "name": "Kurva intern variabel 3",
+      "note": "Internal curve variable",
       "access": "read",
-      "role_access": "Guest",
+      "role_access": "Service",
       "format": "{0}",
       "address": [
         "0:127"
       ]
     },
-    "Sym_Inbrottslarm": {
+    "Inbrottslarm": {
       "enabled": true,
       "type": "binary_sensor",
       "name": "Inbrottslarm",
       "note": "",
-      "access": "read_write",
+      "access": "read",
       "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:136"
       ]
     },
-    "Sym_Vattenventil": {
+    "Vattenventil": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Vattenventil",
       "note": "",
       "access": "read_write",
@@ -244,22 +246,22 @@
       "name": "Expansionskärl tryckgivare (bar)",
       "note": "",
       "access": "read",
-      "role_access": "None",
+      "role_access": "Guest",
       "unit": "bar",
       "device_class": "pressure",
       "format": "{0}",
       "address": [
         "0:141"
       ],
-      "decimals": 2
+      "decimals": 1
     },
     "Tryckgivare_val": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Tryckgivare (val)",
+      "type": "switch",
+      "name": "Tryckgivare",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:142"
@@ -267,11 +269,11 @@
     },
     "Returgivare_VS1_val": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Returgivare VS1 (val)",
+      "type": "switch",
+      "name": "Returgivare VS1",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:145"
@@ -279,11 +281,11 @@
     },
     "TappVV_givare_val": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "TappVV givare (val)",
+      "type": "switch",
+      "name": "TappVV givare",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:151"
@@ -291,36 +293,36 @@
     },
     "Av_Pa_Rum_1_rumsgivare": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Av/På Rum 1 (rumsgivare)",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:589"
       ]
     },
-    "Sym_AV_PA_Rum_1": {
+    "AV_PA_Rum_1": {
       "enabled": true,
       "type": "switch",
       "name": "Vattenläckagesensor 1 Av/På",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "description": "Aktiverar/deaktiverar vattenläckagesensor 1 (RUM_7)",
       "format": "{0}",
       "address": [
         "0:154"
       ]
     },
-    "Sym_AV_PA_Rum_2": {
+    "AV_PA_Rum_2": {
       "enabled": true,
       "type": "switch",
       "name": "Vattenläckagesensor 2 Av/På",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "description": "Aktiverar/deaktiverar vattenläckagesensor 2 (RUM_8)",
       "format": "{0}",
       "address": [
@@ -339,55 +341,55 @@
         "0:158"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Varmematare_val": {
       "enabled": true,
       "type": "switch",
-      "name": "Värmemängdsmätare (val)",
+      "name": "Värmemängdsmätare",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "description": "Aktiverar/deaktiverar värmemängdsmätare",
       "format": "{0}",
       "address": [
         "0:159"
       ]
     },
-    "Sym_AV_PA_Rum_3": {
+    "AV_PA_Rum_3": {
       "enabled": true,
       "type": "switch",
       "name": "Vattenläckagesensor 3 Av/På",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "description": "Aktiverar/deaktiverar vattenläckagesensor 3 (RUM_9)",
       "format": "{0}",
       "address": [
         "0:160"
       ]
     },
-    "Sym_AV_PA_Rum_4": {
+    "AV_PA_Rum_4": {
       "enabled": true,
       "type": "switch",
       "name": "Vattenläckagesensor 4 Av/På",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "description": "Aktiverar/deaktiverar vattenläckagesensor 4 (RUM_10)",
       "format": "{0}",
       "address": [
         "0:163"
       ]
     },
-    "Sym_AV_PA_Rum_5": {
+    "AV_PA_Rum_5": {
       "enabled": true,
       "type": "switch",
       "name": "Vattenläckagesensor 5 Av/På",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "description": "Aktiverar/deaktiverar vattenläckagesensor 5 (RUM_11)",
       "format": "{0}",
       "address": [
@@ -406,16 +408,19 @@
         "0:167"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
-    "Vattensensor_skriv_3_0_175": {
+    "Vattensensor_skriv_3": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Vattensensor skriv 3",
       "note": "",
       "access": "read_write",
       "role_access": "Operator",
+      "min": 0,
+      "max": 100,
+      "step": 1,
       "format": "{0}",
       "address": [
         "0:175"
@@ -433,99 +438,113 @@
         "0:176"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
-    "Vattensensor_skriv_4_0_205": {
+    "Vattensensor_skriv_4": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Vattensensor skriv 4",
       "note": "",
       "access": "read_write",
       "role_access": "Operator",
+      "min": 0,
+      "max": 100,
+      "step": 1,
       "format": "{0}",
       "address": [
         "0:205"
       ]
     },
-    "Parallelforskjutning_regulator_0_206": {
+    "Parallelforskjutning_regulator": {
       "enabled": true,
       "type": "number",
       "name": "Parallelförskjutning regulator",
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": -10.0,
+      "max": 10.0,
+      "step": 0.1,
       "format": "{0}",
       "address": [
         "0:206"
       ]
     },
-    "Styrande_rum_1_0_208": {
+    "Styrande_rum_1_Av_Pa": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Styrande rum 1",
+      "type": "switch",
+      "name": "Styrande rum 1 Av/På",
       "note": "",
       "access": "read_write",
+      "invert": true,
       "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:208"
       ]
     },
-    "Styrande_rum_2_0_211": {
+    "Styrande_rum_2_Av_Pa": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Styrande rum 2",
+      "type": "switch",
+      "name": "Styrande rum 2 Av/På",
       "note": "",
       "access": "read_write",
+      "invert": true,
       "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:211"
       ]
     },
-    "Styrande_rum_3_0_214": {
+    "Styrande_rum_3_Av_Pa": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Styrande rum 3",
+      "type": "switch",
+      "name": "Styrande rum 3 Av/På",
       "note": "",
       "access": "read_write",
+      "invert": true,
       "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:214"
       ]
     },
-    "Forskjutning_Av_Pa_0_215": {
+    "Forskjutning_Av_Pa": {
       "enabled": true,
       "type": "number",
       "name": "Förskjutning Av/På",
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": -20.0,
+      "max": 20.0,
+      "step": 0.1,
       "format": "{0}",
       "address": [
         "0:215"
       ]
     },
-    "Styrande_rum_4_0_217": {
+    "Styrande_rum_4_Av_Pa": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Styrande rum 4",
+      "type": "switch",
+      "name": "Styrande rum 4 Av/På",
       "note": "",
       "access": "read_write",
+      "invert": true,
       "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:217"
       ]
     },
-    "Styrande_rum_5_0_220": {
+    "Styrande_rum_5_Av_Pa": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Styrande rum 5",
+      "type": "switch",
+      "name": "Styrande rum 5 Av/På",
       "note": "",
       "access": "read_write",
+      "invert": true,
       "role_access": "Guest",
       "format": "{0}",
       "address": [
@@ -534,19 +553,19 @@
     },
     "Fjarrvarme_tillopp_givare_val": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Fjärrvärme tillopp givare (val)",
+      "type": "switch",
+      "name": "Fjärrvärme tillopp givare",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:230"
       ]
     },
-    "Grundkurva_30degC_0_233": {
+    "Grundkurva_30degC": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Grundkurva -30°C",
       "note": "",
       "access": "read_write",
@@ -559,25 +578,29 @@
         "0:233"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
-    "Vattensensor_skriv_5_0_235": {
+    "Vattensensor_skriv_5": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Vattensensor skriv 5",
       "note": "",
       "access": "read_write",
       "role_access": "Operator",
+      "min": 0,
+      "max": 100,
+      "step": 1,
       "format": "{0}",
       "address": [
         "0:235"
       ]
     },
-    "Var_0_241": {
+    "RCWM_KOMMUNIKATION": {
       "enabled": true,
       "type": "sensor",
-      "note": "",
+      "name": "Kommunikation trådlös mottagare",
+      "note": "Wireless receiver communication status",
       "access": "read",
       "role_access": "Guest",
       "format": "{0}",
@@ -587,7 +610,7 @@
     },
     "Grundkurva_25degC": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Grundkurva -25°C",
       "note": "",
       "access": "read_write",
@@ -600,7 +623,7 @@
         "0:242"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Yref1_MIN_1": {
@@ -610,6 +633,9 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:249"
@@ -621,15 +647,15 @@
       "name": "Vald värmekurva",
       "note": "",
       "access": "read",
-      "role_access": "Guest",
+      "role_access": "Service",
       "format": "{0}",
       "address": [
         "0:250"
       ]
     },
-    "Grundkurva_20degC_0_251": {
+    "Grundkurva_20degC": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Grundkurva -20°C",
       "note": "",
       "access": "read_write",
@@ -642,7 +668,7 @@
         "0:251"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "UTE_KAL_4": {
@@ -650,23 +676,23 @@
       "type": "sensor",
       "name": "Kalibrering utegivare 4",
       "note": "",
-      "access": "read",
+      "access": "read_write",
       "role_access": "Admin",
       "format": "{0}",
       "address": [
         "0:252"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Tradlos_mottagare_val": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Trådlös mottagare (val)",
+      "type": "switch",
+      "name": "Trådlös mottagare",
       "note": "",
-      "access": "read",
-      "role_access": "None",
+      "access": "read_write",
+      "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:258"
@@ -679,6 +705,9 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:259"
@@ -690,7 +719,7 @@
       "name": "Värmemätare status",
       "note": "",
       "access": "read",
-      "role_access": "Guest",
+      "role_access": "Service",
       "format": "{0}",
       "address": [
         "0:260"
@@ -698,7 +727,7 @@
     },
     "Grundkurva_15degC": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Grundkurva -15°C",
       "note": "",
       "access": "read_write",
@@ -711,7 +740,7 @@
         "0:261"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Yref3_MIN_3": {
@@ -721,14 +750,17 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:267"
       ]
     },
-    "Grundkurva_10degC_0_269": {
+    "Grundkurva_10degC": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Grundkurva -10°C",
       "note": "",
       "access": "read_write",
@@ -741,12 +773,12 @@
         "0:269"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "DisplacementValue": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Parallelförskjutning (rumstemp)",
       "note": "",
       "access": "read_write",
@@ -756,7 +788,7 @@
       "min": -5.0,
       "max": 5.0,
       "step": 0.5,
-      "decimals": 2,
+      "decimals": 1,
       "format": "{0}",
       "address": [
         "0:273"
@@ -781,14 +813,17 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:276"
       ]
     },
-    "Grundkurva_5degC_0_278": {
+    "Grundkurva_5degC": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Grundkurva -5°C",
       "note": "",
       "access": "read_write",
@@ -801,7 +836,7 @@
         "0:278"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "UTE_KAL_1": {
@@ -809,14 +844,14 @@
       "type": "sensor",
       "name": "Kalibrering utegivare 1",
       "note": "",
-      "access": "read",
+      "access": "read_write",
       "role_access": "Admin",
       "format": "{0}",
       "address": [
         "0:279"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Yref5_MIN_5": {
@@ -826,14 +861,17 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:285"
       ]
     },
-    "Grundkurva_0degC_0_287": {
+    "Grundkurva_0degC": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Grundkurva 0°C",
       "note": "",
       "access": "read_write",
@@ -846,7 +884,7 @@
         "0:287"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Optimering_Constant": {
@@ -869,6 +907,9 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:294"
@@ -886,9 +927,9 @@
         "0:295"
       ]
     },
-    "Grundkurva_+5degC_0_296": {
+    "Grundkurva_+5degC  _296": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Grundkurva +5°C",
       "note": "",
       "access": "read_write",
@@ -901,7 +942,7 @@
         "0:296"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Optimering_Grundkurva_Time": {
@@ -917,7 +958,7 @@
         "0:299"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Yref7_MIN_7": {
@@ -927,6 +968,9 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:303"
@@ -934,19 +978,19 @@
     },
     "Utegivare_val": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Utegivare (val)",
+      "type": "switch",
+      "name": "Utegivare",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:304"
       ]
     },
-    "Grundkurva_+10degC_0_305": {
+    "Grundkurva_+10degC": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Grundkurva +10°C",
       "note": "",
       "access": "read_write",
@@ -959,7 +1003,7 @@
         "0:305"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Fjarrvarme_tillopp_temp": {
@@ -968,13 +1012,13 @@
       "name": "Fjärrvärme tillopp (temp)",
       "note": "",
       "access": "read",
-      "role_access": "Guest",
+      "role_access": "Service",
       "format": "{0}",
       "address": [
         "0:311"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Yref8_MIN_8": {
@@ -984,14 +1028,17 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:312"
       ]
     },
-    "Grundkurva_+15degC_0_314": {
+    "Grundkurva_+15degC": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Grundkurva +15°C",
       "note": "",
       "access": "read_write",
@@ -1004,14 +1051,14 @@
         "0:314"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
-    "Found_0:315_0_315": {
+    "SYNKA_MOT_TILL_DUC": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Found 0:315",
-      "note": "",
+      "type": "switch",
+      "name": "Synka mottagare till DUC",
+      "note": "Sync all IDs from receiver to DUC",
       "access": "read_write",
       "role_access": "Operator",
       "format": "{0}",
@@ -1019,11 +1066,11 @@
         "0:315"
       ]
     },
-    "Found_0:317_0_317": {
+    "SYNKA_DUC_TILL_MOT": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Found 0:317",
-      "note": "",
+      "type": "switch",
+      "name": "Synka DUC till mottagare",
+      "note": "Sync all IDs from DUC to receiver",
       "access": "read_write",
       "role_access": "Operator",
       "format": "{0}",
@@ -1038,28 +1085,33 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:321"
       ]
     },
-    "Var_0_325": {
+    "INTERNAL_VAR_325": {
       "enabled": true,
       "type": "sensor",
-      "note": "",
+      "name": "Intern variabel 325",
+      "note": "Internal system variable",
       "access": "read",
-      "role_access": "Guest",
+      "role_access": "Admin",
       "format": "{0}",
       "address": [
         "0:325"
       ]
     },
-    "Var_0_329": {
+    "INTERNAL_VAR_329": {
       "enabled": true,
       "type": "sensor",
-      "note": "",
+      "name": "Intern variabel 329",
+      "note": "Internal system variable",
       "access": "read",
-      "role_access": "Guest",
+      "role_access": "Admin",
       "format": "{0}",
       "address": [
         "0:329"
@@ -1072,6 +1124,9 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:330"
@@ -1079,11 +1134,11 @@
     },
     "Setpoint_for_onskad_rumstemperatur_degC": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Önskad rumstemperatur",
       "note": "",
       "access": "read_write",
-      "role_access": "Service",
+      "role_access": "Guest",
       "min": 15.0,
       "max": 25.0,
       "step": 0.5,
@@ -1092,21 +1147,22 @@
         "0:332"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
-    "Var_0_335": {
+    "INTERNAL_VAR_335": {
       "enabled": true,
       "type": "sensor",
-      "note": "",
+      "name": "Intern variabel 335",
+      "note": "Internal system variable",
       "access": "read",
-      "role_access": "Guest",
+      "role_access": "Admin",
       "format": "{0}",
       "address": [
         "0:335"
       ]
     },
-    "Antal_kurvpunkter_0_341": {
+    "Antal_kurvpunkter": {
       "enabled": true,
       "type": "sensor",
       "name": "Antal kurvpunkter",
@@ -1125,9 +1181,9 @@
       "name": "VS1_GT11 (framledning)",
       "note": "",
       "access": "read",
-      "role_access": "None",
+      "role_access": "Guest",
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature",
       "format": "{0}",
       "address": [
@@ -1141,6 +1197,9 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:345"
@@ -1149,7 +1208,7 @@
     "AdaptDelay": {
       "enabled": true,
       "type": "sensor",
-      "name": "AdaptDelay",
+      "name": "Uppstartsfördröjning",
       "note": "",
       "access": "read",
       "role_access": "Guest",
@@ -1158,29 +1217,28 @@
       "address": [
         "0:347"
       ],
-      "unit": "°C",
-      "decimals": 2,
-      "device_class": "temperature"
+      "unit": "min",
+      "decimals": 0
     },
     "UTE_KAL_RUM_5_KAL": {
       "enabled": true,
       "type": "sensor",
       "name": "Kalibrering utegivare/rum 5",
       "note": "",
-      "access": "read",
+      "access": "read_write",
       "role_access": "Admin",
       "format": "{0}",
       "address": [
         "0:349"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "AdaptTime": {
       "enabled": true,
       "type": "sensor",
-      "name": "AdaptTime",
+      "name": "Adaptionsfördröjning",
       "note": "",
       "access": "read",
       "role_access": "Guest",
@@ -1189,14 +1247,13 @@
       "address": [
         "0:350"
       ],
-      "unit": "°C",
-      "decimals": 2,
-      "device_class": "temperature"
+      "unit": "x 10min",
+      "decimals": 0
     },
     "AdaptConst": {
       "enabled": true,
       "type": "sensor",
-      "name": "AdaptConst",
+      "name": "Adaptionsskala",
       "note": "",
       "access": "read",
       "role_access": "Guest",
@@ -1206,7 +1263,7 @@
         "0:352"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Yref2_MAX_2": {
@@ -1216,6 +1273,9 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:354"
@@ -1224,7 +1284,7 @@
     "MaxNegDev": {
       "enabled": true,
       "type": "sensor",
-      "name": "MaxNegDev",
+      "name": "Max negativ avvikelse",
       "note": "",
       "access": "read",
       "role_access": "Guest",
@@ -1232,7 +1292,10 @@
       "format": "{0}",
       "address": [
         "0:359"
-      ]
+      ],
+      "unit": "°C",
+      "decimals": 1,
+      "device_class": "temperature"
     },
     "Yref3_MAX_3": {
       "enabled": true,
@@ -1241,6 +1304,9 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:363"
@@ -1249,7 +1315,7 @@
     "MaxPosDev": {
       "enabled": true,
       "type": "sensor",
-      "name": "MaxPosDev",
+      "name": "Max positiv avvikelse",
       "note": "",
       "access": "read",
       "role_access": "Guest",
@@ -1257,7 +1323,10 @@
       "format": "{0}",
       "address": [
         "0:368"
-      ]
+      ],
+      "unit": "°C",
+      "decimals": 1,
+      "device_class": "temperature"
     },
     "Yref4_MAX_4": {
       "enabled": true,
@@ -1266,6 +1335,9 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:372"
@@ -1273,7 +1345,7 @@
     },
     "LowLim": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Min framledningstemperatur",
       "note": "",
       "access": "read_write",
@@ -1286,7 +1358,7 @@
         "0:377"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Yref5_MAX_5": {
@@ -1296,6 +1368,9 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:381"
@@ -1303,7 +1378,7 @@
     },
     "HighLim": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Max framledningstemperatur",
       "note": "",
       "access": "read_write",
@@ -1316,7 +1391,7 @@
         "0:386"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "UTE_KAL_2": {
@@ -1324,14 +1399,14 @@
       "type": "sensor",
       "name": "Kalibrering utegivare 2",
       "note": "",
-      "access": "read",
+      "access": "read_write",
       "role_access": "Admin",
       "format": "{0}",
       "address": [
         "0:387"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Yref6_MAX_6": {
@@ -1341,6 +1416,9 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:390"
@@ -1353,6 +1431,9 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:399"
@@ -1364,7 +1445,7 @@
       "name": "Mottagning rum 1 (dB)",
       "note": "",
       "access": "read",
-      "role_access": "None",
+      "role_access": "Guest",
       "unit": "dB",
       "device_class": "signal_strength",
       "format": "{0}",
@@ -1372,13 +1453,23 @@
         "0:406"
       ]
     },
-    "Found_0:407_0_407": {
+    "VAL_RAD_KURVA": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Found 0:407",
-      "note": "",
+      "type": "select",
+      "name": "Val rad kurva",
+      "note": "Select RAD curve row",
       "access": "read_write",
-      "role_access": "Operator",
+      "role_access": "Service",
+      "options": [
+        "RAD Kurva 1",
+        "RAD Kurva 2",
+        "RAD Kurva 3"
+      ],
+      "values": [
+        0,
+        1,
+        2
+      ],
       "format": "{0}",
       "address": [
         "0:407"
@@ -1391,6 +1482,9 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:408"
@@ -1398,17 +1492,21 @@
     },
     "ID_RUM_1": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Rum 1 ID (trådlös)",
       "note": "",
-      "access": "read",
+      "access": "read_write",
       "role_access": "Guest",
-      "format": "{0}",
+      "format": "{0:.0f}",
+      "decimals": 0,
+      "min": -32768,
+      "max": 32767,
+      "step": 1,
       "address": [
         "0:411"
       ]
     },
-    "Rum_2_mottagning_RSSI_0_415": {
+    "Rum_2_mottagning_RSSI": {
       "enabled": true,
       "type": "sensor",
       "name": "Rum 2 mottagning (RSSI)",
@@ -1427,6 +1525,9 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:417"
@@ -1438,7 +1539,7 @@
       "name": "Utegivare status",
       "note": "",
       "access": "read",
-      "role_access": "None",
+      "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:418"
@@ -1446,17 +1547,21 @@
     },
     "ID_RUM_2": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Rum 2 ID (trådlös)",
       "note": "",
-      "access": "read",
+      "access": "read_write",
       "role_access": "Guest",
-      "format": "{0}",
+      "format": "{0:.0f}",
+      "decimals": 0,
+      "min": -32768,
+      "max": 32767,
+      "step": 1,
       "address": [
         "0:420"
       ]
     },
-    "Rum_3_mottagning_RSSI_0_424": {
+    "Rum_3_mottagning_RSSI": {
       "enabled": true,
       "type": "sensor",
       "name": "Rum 3 mottagning (RSSI)",
@@ -1475,6 +1580,9 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": 10.0,
+      "max": 80.0,
+      "step": 0.5,
       "format": "{0}",
       "address": [
         "0:426"
@@ -1482,19 +1590,23 @@
     },
     "ID_RUM_3": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Rum 3 ID (trådlös)",
       "note": "",
-      "access": "read",
+      "access": "read_write",
       "role_access": "Guest",
-      "format": "{0}",
+      "format": "{0:.0f}",
+      "decimals": 0,
+      "min": -32768,
+      "max": 32767,
+      "step": 1,
       "address": [
         "0:429"
       ]
     },
     "Framledning_vid_adaption_30degC_ute": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Adaptionskurva -30°C",
       "note": "",
       "access": "read_write",
@@ -1507,10 +1619,10 @@
         "0:431"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
-    "Rum_4_mottagning_RSSI_0_433": {
+    "Rum_4_mottagning_RSSI": {
       "enabled": true,
       "type": "sensor",
       "name": "Rum 4 mottagning (RSSI)",
@@ -1524,11 +1636,11 @@
     },
     "Elektronisk_styrning_TappVV_val": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Elektronisk styrning TappVV (val)",
+      "type": "switch",
+      "name": "Elektronisk styrning TappVV",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:434"
@@ -1536,19 +1648,23 @@
     },
     "ID_RUM_4": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Rum 4 ID (trådlös)",
       "note": "",
-      "access": "read",
+      "access": "read_write",
       "role_access": "Guest",
-      "format": "{0}",
+      "format": "{0:.0f}",
+      "decimals": 0,
+      "min": -32768,
+      "max": 32767,
+      "step": 1,
       "address": [
         "0:438"
       ]
     },
     "Framledning_vid_adaption_25degC_ute": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Adaptionskurva -25°C",
       "note": "",
       "access": "read_write",
@@ -1561,16 +1677,16 @@
         "0:440"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
-    "Found_in_UI_0:441_0_441": {
+    "KALIBRERING_INTERNAL": {
       "enabled": true,
       "type": "sensor",
-      "name": "Found in UI 0:441",
-      "note": "",
-      "access": "read",
-      "role_access": "Guest",
+      "name": "Kalibrering intern",
+      "note": "Internal calibration variable",
+      "access": "read_write",
+      "role_access": "Service",
       "format": "{0}",
       "address": [
         "0:441"
@@ -1582,9 +1698,9 @@
       "name": "VS1_GT_RETUR (retur)",
       "note": "",
       "access": "read",
-      "role_access": "None",
+      "role_access": "Guest",
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature",
       "format": "{0}",
       "address": [
@@ -1593,7 +1709,7 @@
     },
     "Framledning_vid_adaption_20degC_ute": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Adaptionskurva -20°C",
       "note": "",
       "access": "read_write",
@@ -1606,12 +1722,12 @@
         "0:449"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Framledning_vid_adaption_15degC_ute": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Adaptionskurva -15°C",
       "note": "",
       "access": "read_write",
@@ -1624,12 +1740,12 @@
         "0:458"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Framledning_vid_adaption_10degC_ute": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Adaptionskurva -10°C",
       "note": "",
       "access": "read_write",
@@ -1642,16 +1758,24 @@
         "0:467"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
-    "Driftserver_sel_1": {
+    "Driftserver_sel": {
       "enabled": true,
-      "type": "sensor",
+      "type": "select",
       "name": "Driftserver",
       "note": "",
-      "access": "read",
-      "role_access": "Guest",
+      "access": "read_write",
+      "role_access": "Service",
+      "options": [
+        "homeSide 1",
+        "homeSide 2"
+      ],
+      "values": [
+        0,
+        1
+      ],
       "format": "{0}",
       "address": [
         "0:468"
@@ -1671,7 +1795,7 @@
     },
     "Framledning_vid_adaption_5degC_ute": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Adaptionskurva -5°C",
       "note": "",
       "access": "read_write",
@@ -1684,7 +1808,7 @@
         "0:476"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "MAN_FJV_SV1_%": {
@@ -1701,7 +1825,7 @@
     },
     "Framledning_vid_adaption_0degC_ute": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Adaptionskurva 0°C",
       "note": "",
       "access": "read_write",
@@ -1714,7 +1838,7 @@
         "0:485"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "SYMBOL_VV1_TAPP": {
@@ -1722,8 +1846,8 @@
       "type": "select",
       "name": "VV1 tappvarmvatten ventil indikering",
       "note": "",
-      "access": "read",
-      "role_access": "None",
+      "access": "read_write",
+      "role_access": "Guest",
       "options": [
         "0%",
         "Manuell",
@@ -1767,7 +1891,7 @@
       "name": "Fjärrvärme shuntventil läge",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "options": [
         "0%",
         "Manuell",
@@ -1785,7 +1909,7 @@
     },
     "Framledning_vid_adaption_+5degC_ute": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Adaptionskurva +5°C",
       "note": "",
       "access": "read_write",
@@ -1798,12 +1922,12 @@
         "0:495"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Framledning_vid_adaption_+10degC_ute": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Adaptionskurva +10°C",
       "note": "",
       "access": "read_write",
@@ -1816,7 +1940,7 @@
         "0:503"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "VV1_TAPP_UTSIGN_%": {
@@ -1827,13 +1951,14 @@
       "access": "read",
       "role_access": "Guest",
       "format": "{0}",
+      "decimals": 1,
       "address": [
         "0:505"
       ]
     },
     "Framledning_vid_adaption_+15degC_ute": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Adaptionskurva +15°C",
       "note": "",
       "access": "read_write",
@@ -1846,7 +1971,7 @@
         "0:512"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "FJV_SV1_UTSIGN_%": {
@@ -1866,23 +1991,23 @@
       "type": "sensor",
       "name": "Kalibrering utegivare 7",
       "note": "",
-      "access": "read",
+      "access": "read_write",
       "role_access": "Admin",
       "format": "{0}",
       "address": [
         "0:518"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
-    "Found_0:523_0_523": {
+    "GRUNDKURVA_MIN_MAX": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Found 0:523",
-      "note": "",
+      "type": "switch",
+      "name": "Grundkurva min max",
+      "note": "Enable base curve min/max limits",
       "access": "read_write",
-      "role_access": "Guest",
+      "role_access": "Operator",
       "format": "{0}",
       "address": [
         "0:523"
@@ -1890,11 +2015,14 @@
     },
     "GANGTID_VS1_SV1_2": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Gångtid ventil (alternativ 2)",
       "note": "",
-      "access": "read",
-      "role_access": "Guest",
+      "access": "read_write",
+      "role_access": "Service",
+      "min": 0,
+      "max": 600,
+      "step": 1,
       "unit": "s",
       "format": "{0}",
       "address": [
@@ -1903,11 +2031,14 @@
     },
     "GANGTID_VS1_SV1_1": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Gångtid ventil (alternativ 1)",
       "note": "",
-      "access": "read",
-      "role_access": "Guest",
+      "access": "read_write",
+      "role_access": "Service",
+      "min": 0,
+      "max": 600,
+      "step": 1,
       "unit": "s",
       "format": "{0}",
       "address": [
@@ -1916,7 +2047,7 @@
     },
     "X_1": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Kurvpunkt X1 (utetemperatur)",
       "note": "",
       "access": "read_write",
@@ -1979,7 +2110,7 @@
     },
     "X_2": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Kurvpunkt X2 (utetemperatur)",
       "note": "",
       "access": "read_write",
@@ -2030,7 +2161,7 @@
     },
     "X_3": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Kurvpunkt X3 (utetemperatur)",
       "note": "",
       "access": "read_write",
@@ -2049,7 +2180,7 @@
       "name": "VS1 värmesystem shuntventil läge",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "options": [
         "0%",
         "Manuell",
@@ -2067,7 +2198,7 @@
     },
     "X_4": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Kurvpunkt X4 (utetemperatur)",
       "note": "",
       "access": "read_write",
@@ -2086,9 +2217,9 @@
       "name": "VS1 framledning extra givare (temp)",
       "note": "",
       "access": "read",
-      "role_access": "None",
+      "role_access": "Guest",
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature",
       "format": "{0}",
       "address": [
@@ -2097,7 +2228,7 @@
     },
     "X_5": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Kurvpunkt X5 (utetemperatur)",
       "note": "",
       "access": "read_write",
@@ -2119,13 +2250,14 @@
       "role_access": "Guest",
       "unit": "%",
       "format": "{0}",
+      "decimals": 1,
       "address": [
         "0:583"
       ]
     },
     "X_6": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Kurvpunkt X6 (utetemperatur)",
       "note": "",
       "access": "read_write",
@@ -2140,11 +2272,11 @@
     },
     "Av_Pa_Rum_2_rumsgivare": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Av/På Rum 2 (rumsgivare)",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:592"
@@ -2152,11 +2284,11 @@
     },
     "Av_Pa_Rum_3_rumsgivare": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Av/På Rum 3 (rumsgivare)",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:595"
@@ -2176,11 +2308,11 @@
     },
     "Av_Pa_Rum_4_rumsgivare": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Av/På Rum 4 (rumsgivare)",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:598"
@@ -2188,7 +2320,7 @@
     },
     "X_7": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Kurvpunkt X7 (utetemperatur)",
       "note": "",
       "access": "read_write",
@@ -2203,11 +2335,11 @@
     },
     "Av_Pa_Rum_5_rumsgivare": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Av/På Rum 5 (rumsgivare)",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "format": "{0}",
       "address": [
         "0:601"
@@ -2215,11 +2347,14 @@
     },
     "GANGTID_VS1_SV1": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "VS1 ventil gångtid",
       "note": "",
-      "access": "read",
-      "role_access": "Guest",
+      "access": "read_write",
+      "role_access": "Service",
+      "min": 0,
+      "max": 600,
+      "step": 1,
       "unit": "s",
       "format": "{0}",
       "address": [
@@ -2232,7 +2367,7 @@
       "name": "VS1 värmesystem pump läge",
       "note": "",
       "access": "read_write",
-      "role_access": "None",
+      "role_access": "Guest",
       "options": [
         "Från",
         "Till",
@@ -2250,7 +2385,7 @@
     },
     "X_8": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Kurvpunkt X8 (utetemperatur)",
       "note": "",
       "access": "read_write",
@@ -2263,7 +2398,7 @@
         "0:609"
       ]
     },
-    "Watchdog_timer_0_612": {
+    "Watchdog_timer": {
       "enabled": true,
       "type": "sensor",
       "name": "Watchdog timer",
@@ -2277,7 +2412,7 @@
     },
     "X_9": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Kurvpunkt X9 (utetemperatur)",
       "note": "",
       "access": "read_write",
@@ -2295,19 +2430,19 @@
       "type": "sensor",
       "name": "Kalibrering utegivare 3/6",
       "note": "",
-      "access": "read",
+      "access": "read_write",
       "role_access": "Admin",
       "format": "{0}",
       "address": [
         "0:623"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "X_10": {
       "enabled": true,
-      "type": "binary_sensor",
+      "type": "switch",
       "name": "Kurvpunkt X10 (utetemperatur)",
       "note": "",
       "access": "read_write",
@@ -2320,11 +2455,11 @@
         "0:626"
       ]
     },
-    "Found_0:638_0_638": {
+    "SKRIV_RUMSGIVARE_1": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Found 0:638",
-      "note": "",
+      "type": "switch",
+      "name": "Skriv rumsgivare 1",
+      "note": "Write room sensor 1 configuration",
       "access": "read_write",
       "role_access": "Operator",
       "format": "{0}",
@@ -2338,7 +2473,7 @@
       "name": "Trådlös utegivare mottagning (RSSI)",
       "note": "",
       "access": "read",
-      "role_access": "None",
+      "role_access": "Guest",
       "unit": "dB",
       "device_class": "signal_strength",
       "format": "{0}",
@@ -2382,7 +2517,7 @@
         "0:654"
       ]
     },
-    "Vattensensor_mottagning_8_RSSI_0_658": {
+    "Vattensensor_mottagning_8_RSSI": {
       "enabled": true,
       "type": "sensor",
       "name": "Vattensensor mottagning 8 (RSSI)",
@@ -2406,7 +2541,7 @@
         "0:663"
       ]
     },
-    "Vattensensor_mottagning_9_RSSI_0_667": {
+    "Vattensensor_mottagning_9_RSSI": {
       "enabled": true,
       "type": "sensor",
       "name": "Vattensensor mottagning 9 (RSSI)",
@@ -2418,11 +2553,11 @@
         "0:667"
       ]
     },
-    "Found_0:668_0_668": {
+    "SKRIV_RUMSGIVARE_2": {
       "enabled": true,
-      "type": "binary_sensor",
-      "name": "Found 0:668",
-      "note": "",
+      "type": "switch",
+      "name": "Skriv rumsgivare 2",
+      "note": "Write room sensor 2 configuration",
       "access": "read_write",
       "role_access": "Operator",
       "format": "{0}",
@@ -2695,7 +2830,7 @@
       "name": "INBROTTSLARM NARVARO LOGG",
       "note": "Alarm/status indicator",
       "access": "read",
-      "role_access": "Guest",
+      "role_access": "Service",
       "device_class": "problem",
       "format": "{0}",
       "address": [
@@ -3455,7 +3590,7 @@
         "0:96"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Rum_2_temperatur": {
@@ -3470,7 +3605,7 @@
         "0:204"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Rum_3_temperatur": {
@@ -3485,7 +3620,7 @@
         "0:306"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Rum_4_temperatur": {
@@ -3500,7 +3635,7 @@
         "0:409"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Tradlos_utegivare_temperatur": {
@@ -3515,7 +3650,7 @@
         "0:125"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Rum_5_temperatur": {
@@ -3530,7 +3665,7 @@
         "0:84"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Tradad_utegivare_temperatur": {
@@ -3545,7 +3680,7 @@
         "0:168"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Kickstart_funktion": {
@@ -3562,26 +3697,32 @@
     },
     "Tradlos_utegivare_skriv": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Trådlös utegivare (skriv) 0:85",
       "note": "",
       "access": "read_write",
       "role_access": "Operator",
+      "min": -40.0,
+      "max": 50.0,
+      "step": 0.1,
       "format": "{0}",
       "address": [
         "0:85"
       ],
       "unit": "°C",
-      "decimals": 2,
+      "decimals": 1,
       "device_class": "temperature"
     },
     "Vattensensor_skriv_2": {
       "enabled": true,
-      "type": "sensor",
+      "type": "number",
       "name": "Vattensensor skriv 2",
       "note": "",
       "access": "read_write",
       "role_access": "Operator",
+      "min": 0,
+      "max": 100,
+      "step": 1,
       "format": "{0}",
       "address": [
         "0:146"
@@ -3616,7 +3757,7 @@
       "type": "binary_sensor",
       "name": "Analog TF / Öka-Minska TF",
       "note": "",
-      "access": "read_write",
+      "access": "read",
       "role_access": "Guest",
       "format": "{0}",
       "address": [
@@ -3630,6 +3771,9 @@
       "note": "",
       "access": "read_write",
       "role_access": "Service",
+      "min": -20.0,
+      "max": 20.0,
+      "step": 0.1,
       "format": "{0}",
       "address": [
         "0:155"

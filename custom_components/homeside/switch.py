@@ -19,10 +19,14 @@ from homeassistant.helpers.update_coordinator import (
 )
 
 from .client import HomesideClient
-from .const import DOMAIN, UPDATE_INTERVAL_NORMAL
+from .const import DOMAIN, UPDATE_INTERVAL_NORMAL, get_none_value_default
 
 _LOGGER = logging.getLogger(__name__)
 _VARIABLES_FILE = Path(__file__).resolve().parent / "variables.json"
+
+# Load variables.json once at module initialization to avoid blocking I/O warnings
+with open(_VARIABLES_FILE, "r", encoding="utf-8") as _f:
+    _VARIABLES_DATA = json.load(_f)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -36,19 +40,12 @@ class VariableConfig:
     role_access: str | None = None
     address: list[str]  # Address(es) for this entity
     format: str | None = None
+    invert: bool | None = None  # Invert the switch value
 
 
 def _load_variable_configs() -> list[VariableConfig]:
     """Load variables from variables.json."""
-    if not _VARIABLES_FILE.exists():
-        return []
-    
-    try:
-        raw = json.loads(_VARIABLES_FILE.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        _LOGGER.warning("Failed to read variables mapping: %s", exc)
-        return []
-    
+    raw = _VARIABLES_DATA
     default_role_access = raw.get("role_access_default") or "Guest"
     
     configs: list[VariableConfig] = []
@@ -69,6 +66,10 @@ def _load_variable_configs() -> list[VariableConfig]:
         access = info.get("access")
         role_access = info.get("role_access") or default_role_access
         format_template = info.get("format")
+        invert = info.get("invert")
+        
+        if vtype == "switch" and invert:
+            _LOGGER.debug(f"Loading switch {key} with invert={invert}")
         
         configs.append(
             VariableConfig(
@@ -81,6 +82,7 @@ def _load_variable_configs() -> list[VariableConfig]:
                 role_access=role_access,
                 address=address,
                 format=format_template,
+                invert=invert,
             )
         )
     
@@ -100,18 +102,22 @@ async def async_setup_entry(
     # Session-level filtering
     from .const import ROLE_HIERARCHY
     session_level = getattr(client, '_session_level', None)
-    allowed_roles = set()
-    if session_level is not None:
+    # Always set allowed_roles, even if session_level is None
+    if session_level is None:
+        allowed_roles = {ROLE_HIERARCHY[0]}
+    else:
         allowed_roles = set(ROLE_HIERARCHY[: session_level + 1])
-    # Get all boolean writable variables that are enabled (type=switch or binary_sensor with write access)
+    # Get all switch variables that are enabled (only type=switch, respecting the type field)
     switch_configs = [
         cfg for cfg in variable_configs
-        if cfg.enabled and cfg.access == "read_write" and cfg.type in ["switch", "binary_sensor"]
+        if cfg.enabled and cfg.access == "read_write" and cfg.type == "switch"
         and (not cfg.role_access or cfg.role_access in allowed_roles)
     ]
-    # Separate combined from regular switches
-    combined_switches = [cfg for cfg in switch_configs if cfg.address]
-    regular_switches = [cfg for cfg in switch_configs if not cfg.address]
+    # Separate combined from regular switches based on number of addresses
+    # Regular switches: single address (writable)
+    # Combined switches: multiple addresses (read-only, formatted)
+    regular_switches = [cfg for cfg in switch_configs if cfg.address and len(cfg.address) == 1]
+    combined_switches = [cfg for cfg in switch_configs if cfg.address and len(cfg.address) > 1]
     if not regular_switches and not combined_switches:
         return
     
@@ -132,16 +138,23 @@ async def async_setup_entry(
         if verified_switches:
             # Create coordinator for switch updates
             async def _update() -> dict[str, Any]:
-                await client.ensure_connected()
-                data = {}
-                for cfg in verified_switches:
-                    try:
-                        value = await client.read_point(cfg.address[0])
-                        if value is not None:
-                            data[cfg.name] = value
-                    except Exception as e:
-                        _LOGGER.debug(f"Error reading {cfg.address[0]}: {e}")
-                return data
+                try:
+                    await client.ensure_connected()
+                    data = {}
+                    for cfg in verified_switches:
+                        try:
+                            value = await client.read_point(cfg.address[0])
+                            if value is not None:
+                                data[cfg.name] = value
+                        except Exception as e:
+                            _LOGGER.debug(f"Error reading {cfg.address[0]}: {e}")
+                    return data
+                except ConnectionError as err:
+                    _LOGGER.warning("Homeside connection error while updating switches: %s", err)
+                    return {}
+                except Exception as err:  # pragma: no cover - defensive
+                    _LOGGER.exception("Unexpected error while updating switches: %s", err)
+                    return {}
 
             coordinator = DataUpdateCoordinator(
                 hass,
@@ -167,24 +180,31 @@ async def async_setup_entry(
             variables = cfg.address
             
             async def _update_combined(vars=variables, fmt=cfg.format, cfg_name=cfg.name) -> dict[str, Any]:
-                await client.ensure_connected()
-                values, errors = await client.read_points_with_errors(vars)
-                
-                # Apply format template
-                if fmt and all(addr in values for addr in vars):
-                    try:
-                        formatted_value = fmt.format(*[values[addr] for addr in vars])
-                    except (KeyError, IndexError, ValueError) as e:
-                        _LOGGER.warning("Failed to format combined switch %s: %s", cfg_name, e)
+                try:
+                    await client.ensure_connected()
+                    values, errors = await client.read_points_with_errors(vars)
+
+                    # Apply format template
+                    if fmt and all(addr in values for addr in vars):
+                        try:
+                            formatted_value = fmt.format(*[values[addr] for addr in vars])
+                        except (KeyError, IndexError, ValueError) as e:
+                            _LOGGER.warning("Failed to format combined switch %s: %s", cfg_name, e)
+                            formatted_value = None
+                    else:
                         formatted_value = None
-                else:
-                    formatted_value = None
-                
-                return {
-                    "value": formatted_value,
-                    "sources": {addr: values.get(addr) for addr in vars},
-                    "errors": {addr: errors.get(addr) for addr in vars},
-                }
+
+                    return {
+                        "value": formatted_value,
+                        "sources": {addr: values.get(addr) for addr in vars},
+                        "errors": {addr: errors.get(addr) for addr in vars},
+                    }
+                except ConnectionError as err:
+                    _LOGGER.warning("Homeside connection error while reading combined switch %s: %s", cfg_name, err)
+                    return {"value": None, "sources": {addr: None for addr in vars}, "errors": {}}
+                except Exception as err:  # pragma: no cover - defensive
+                    _LOGGER.exception("Unexpected error while reading combined switch %s: %s", cfg_name, err)
+                    return {"value": None, "sources": {addr: None for addr in vars}, "errors": {}}
             
             combined_coordinator = DataUpdateCoordinator(
                 hass,
@@ -219,6 +239,9 @@ class HomesideSwitch(CoordinatorEntity, SwitchEntity):
         self._device_id = device_id
         self._config = config
         self._name = config.name
+        
+        if config.invert:
+            _LOGGER.debug(f"Initialized switch {config.name} with invert=True")
         self._attr_name = f"Homeside {config.name}"
         self._attr_unique_id = f"homeside_{config.key.replace(":", "_").replace("/", "_")}"
         
@@ -253,31 +276,29 @@ class HomesideSwitch(CoordinatorEntity, SwitchEntity):
         # Try to get error info if available
         errors = getattr(self.coordinator, 'data', {}).get('errors', {}) if hasattr(self.coordinator, 'data') else {}
         error = errors.get(self._name) if errors else None
-        # Load none_value_default from variables.json root
-        none_value_default = 0
-        try:
-            import json
-            from pathlib import Path
-            variables_file = Path(__file__).resolve().parent / "variables.json"
-            with open(variables_file, "r", encoding="utf-8") as f:
-                root = json.load(f)
-                none_value_default = root.get("none_value_dafault", 0)
-        except Exception:
-            pass
         if error and error.get("code") == 47 and value is None:
-            value = none_value_default
+            value = get_none_value_default()
         if value is None:
             return None
-        return bool(value)
+        result = bool(value)
+        # Invert if configured
+        if self._config.invert:
+            _LOGGER.debug(f"Switch {self._name}: Raw value={value}, bool={bool(value)}, inverting to {not result}")
+            result = not result
+        return result
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
-        await self._client.write_point(self._config.address[0], True)
+        # Invert if configured
+        value_to_write = False if self._config.invert else True
+        await self._client.write_point(self._config.address[0], value_to_write)
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
-        await self._client.write_point(self._config.address[0], False)
+        # Invert if configured
+        value_to_write = True if self._config.invert else False
+        await self._client.write_point(self._config.address[0], value_to_write)
         await self.coordinator.async_request_refresh()
 
 
@@ -299,9 +320,6 @@ class HomesideCombinedSwitch(SwitchEntity):
         self._name = config.name
         self._attr_unique_id = f"homeside_combined_{config.key.replace(":", "_").replace("/", "_")}_switch"
         self._attr_name = f"Homeside {config.name}"
-        
-        # Combined switches are read-only
-        self._attr_entity_category = EntityCategory.Switch
     
     @property
     def device_info(self):
@@ -320,28 +338,22 @@ class HomesideCombinedSwitch(SwitchEntity):
         data = self._coordinator.data or {}
         value = data.get("value")
         errors = data.get("errors", {})
-        # Load none_value_default from variables.json root
-        none_value_default = 0
-        try:
-            import json
-            from pathlib import Path
-            variables_file = Path(__file__).resolve().parent / "variables.json"
-            with open(variables_file, "r", encoding="utf-8") as f:
-                root = json.load(f)
-                none_value_default = root.get("none_value_dafault", 0)
-        except Exception:
-            pass
         # If any error for a source is code 47 and value is None, use fallback
         if any((err and err.get("code") == 47 and value is None) for err in errors.values()):
-            value = none_value_default
+            value = get_none_value_default()
         if value is None:
             return None
+        # Convert to bool
         if isinstance(value, bool):
-            return value
-        # Try to convert to bool
-        if isinstance(value, str):
-            return value.lower() in ('true', '1', 'on', 'yes')
-        return bool(value)
+            result = value
+        elif isinstance(value, str):
+            result = value.lower() in ('true', '1', 'on', 'yes')
+        else:
+            result = bool(value)
+        # Invert if configured
+        if self._config.invert:
+            result = not result
+        return result
     
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Combined switches are read-only."""

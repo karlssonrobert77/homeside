@@ -14,15 +14,35 @@
           "username": "Lämna tomt för skrivskyddad åtkomst",
           "password": "Lämna tomt för skrivskyddad åtkomst"
         }
-      },
+      }
+    }
+  },
+  "options": {
+    "step": {
       "init": {
-        "title": "Diagnostik och debug",
-        "description": "Visa debug/diagnostik-information (versioner, RSSI, heap memory, etc.)",
+        "title": "Homeside Inställningar",
+        "description": "Konfigurera anslutning, uppdateringsintervall och anslutningsalternativ",
         "data": {
-          "show_diagnostic": "Visa diagnostik"
+          "host": "IP-adress",
+          "username": "Användarnamn (valfritt)",
+          "password": "Lösenord (valfritt)",
+          "show_diagnostic": "Visa diagnostik",
+          "update_interval_fast": "Snabb uppdatering (sek)",
+          "update_interval_normal": "Normal uppdatering (sek)",
+          "update_interval_slow": "Långsam uppdatering (sek)",
+          "reconnect_delay": "Återanslutningsfördröjning (sek)",
+          "keepalive_interval": "Keep-alive intervall (sek)"
         },
         "data_description": {
-          "show_diagnostic": "Aktivera för att visa diagnostik och debug-information i Home Assistant"
+          "host": "IP-adress till HomeSide-styrningen",
+          "username": "Lämna tomt för skrivskyddad åtkomst",
+          "password": "Lämna tomt för skrivskyddad åtkomst",
+          "show_diagnostic": "Visa diagnostik och debug-information (versioner, RSSI, minne)",
+          "update_interval_fast": "Intervall för snabba värden (temperatur, tryck) - 5-60 sekunder",
+          "update_interval_normal": "Intervall för normala värden (pumpar, ventiler) - 10-300 sekunder",
+          "update_interval_slow": "Intervall för långsamma värden (konfiguration) - 60-3600 sekunder",
+          "reconnect_delay": "Väntetid mellan återanslutningsförsök - 1-60 sekunder",
+          "keepalive_interval": "Hur ofta keep-alive ping skickas - 10-300 sekunder"
         }
       }
     }

@@ -16,5 +16,35 @@
         }
       }
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Homeside Settings",
+        "description": "Configure connection, update intervals and connection options",
+        "data": {
+          "host": "IP Address",
+          "username": "Username (optional)",
+          "password": "Password (optional)",
+          "show_diagnostic": "Show diagnostics",
+          "update_interval_fast": "Fast update interval (sec)",
+          "update_interval_normal": "Normal update interval (sec)",
+          "update_interval_slow": "Slow update interval (sec)",
+          "reconnect_delay": "Reconnection delay (sec)",
+          "keepalive_interval": "Keep-alive interval (sec)"
+        },
+        "data_description": {
+          "host": "IP address of the HomeSide controller",
+          "username": "Leave empty for read-only access",
+          "password": "Leave empty for read-only access",
+          "show_diagnostic": "Show diagnostic and debug information (versions, RSSI, memory)",
+          "update_interval_fast": "Interval for fast values (temperature, pressure) - 5-60 seconds",
+          "update_interval_normal": "Interval for normal values (pumps, valves) - 10-300 seconds",
+          "update_interval_slow": "Interval for slow values (configuration) - 60-3600 seconds",
+          "reconnect_delay": "Wait time between reconnection attempts - 1-60 seconds",
+          "keepalive_interval": "How often keep-alive pings are sent - 10-300 seconds"
+        }
+      }
+    }
   }
 }

@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0] - 2026-02-21
+
+### Added
+- **Options Flow Configuration** - Edit integration settings after setup
+  - Change IP address, username, and password without removing integration
+  - Configure update intervals (fast: 5-60s, normal: 10-300s, slow: 60-3600s)
+  - Set reconnect delay (1-60s) and keep-alive interval (10-300s)
+  - Toggle diagnostic sensors visibility
+  - Automatic integration reload when settings change
+- **Comprehensive Diagnostics System** - 25 diagnostic sensors from /debug endpoints
+  - Heap memory statistics (available, used, max, errors)
+  - OS version and commit hash
+  - Network settings (IP, netmask, gateway, DNS1, DNS2)
+  - EXOline sessions (active/max) and external connection IP
+  - Modbus sessions (active/max)
+  - EXOcol tasks count and sizes
+  - BACnet version, build, device ID, memory stats, and allocation result
+  - Separate diagnostics device for organized sensor grouping
+
+### Changed
+- **Code Refactoring** - Improved code organization and maintainability
+  - Created standalone `diagnostics.py` module for /debug endpoint parsing
+  - Externalized diagnostic sensor configuration to `diagnostics_config.json`
+  - Removed 131 lines of hardcoded configuration from `const.py`
+  - Module-level config loading to prevent blocking I/O in event loop
+  - Cleaner separation between WebSocket and HTTP functionality
+
+### Fixed
+- Fixed blocking I/O warning by loading configuration at module import time
+- Fixed options flow AttributeError when accessing integration settings
+- Fixed diagnostic sensor parsing for HTML table structures
+- Fixed DNS extraction to support single and dual DNS server configurations
+
 ## [1.4.1] - 2026-02-11
 
 ### Fixed

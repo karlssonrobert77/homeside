@@ -1,9 +1,60 @@
+"""Constants for the Homeside integration."""
+import json
+from pathlib import Path
+
 DOMAIN = "homeside"
 
 CONF_HOST = "host"
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
 CONF_SHOW_DIAGNOSTIC = "show_diagnostic"
+
+# Options flow configuration keys
+CONF_UPDATE_INTERVAL_FAST = "update_interval_fast"
+CONF_UPDATE_INTERVAL_NORMAL = "update_interval_normal"
+CONF_UPDATE_INTERVAL_SLOW = "update_interval_slow"
+CONF_RECONNECT_DELAY = "reconnect_delay"
+CONF_KEEPALIVE_INTERVAL = "keepalive_interval"
+
+# Load diagnostic configuration at module level to avoid blocking I/O in event loop
+def _load_diagnostic_config() -> dict:
+    """Load diagnostic configuration from JSON file at module import time."""
+    try:
+        diagnostics_file = Path(__file__).resolve().parent / "diagnostics_config.json"
+        with open(diagnostics_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"sensors": {}, "update_interval": 1800}
+
+_DIAGNOSTIC_CONFIG = _load_diagnostic_config()
+_DIAGNOSTIC_SENSORS_CACHE = _DIAGNOSTIC_CONFIG.get("sensors", {})
+_DIAGNOSTIC_UPDATE_INTERVAL_CACHE = _DIAGNOSTIC_CONFIG.get("update_interval", 1800)
+
+# Cache for none_value_default to avoid reading file multiple times
+_NONE_VALUE_DEFAULT_CACHE = None
+
+
+def get_none_value_default() -> int | float:
+    """Get the default value for None returns from variables.json.
+    
+    This value is used when a variable read fails with error code 47 (dataconversion error).
+    Cached after first read to avoid repeated file I/O.
+    """
+    global _NONE_VALUE_DEFAULT_CACHE
+    
+    if _NONE_VALUE_DEFAULT_CACHE is not None:
+        return _NONE_VALUE_DEFAULT_CACHE
+    
+    try:
+        variables_file = Path(__file__).resolve().parent / "variables.json"
+        with open(variables_file, "r", encoding="utf-8") as f:
+            root = json.load(f)
+            _NONE_VALUE_DEFAULT_CACHE = root.get("none_value_default", 0)
+            return _NONE_VALUE_DEFAULT_CACHE
+    except Exception:
+        # Fallback to 0 if file can't be read
+        _NONE_VALUE_DEFAULT_CACHE = 0
+        return 0
 
 WS_PATH = "/_EXOsocket/"
 
@@ -14,7 +65,28 @@ UPDATE_INTERVAL_FAST = 10  # Temperatures, pressures, active values
 UPDATE_INTERVAL_NORMAL = 30  # Pump status, valve status, room sensors
 UPDATE_INTERVAL_SLOW = 300  # Configuration, version info, calibration
 UPDATE_INTERVAL_VERY_SLOW = 3600  # Static info like serial numbers
-UPDATE_INTERVAL_DIAGNOSTIC = 1800  # System diagnostics (30 minutes)
+
+
+def get_diagnostic_update_interval() -> int:
+    """Get diagnostic update interval from pre-loaded config.
+    
+    Config is loaded at module import time to avoid blocking I/O in event loop.
+    
+    Returns:
+        Update interval in seconds (default: 1800)
+    """
+    return _DIAGNOSTIC_UPDATE_INTERVAL_CACHE
+
+
+# Lazy-load diagnostic update interval (for backward compatibility)
+UPDATE_INTERVAL_DIAGNOSTIC = None
+
+
+def _ensure_diagnostic_interval_loaded():
+    """Ensure UPDATE_INTERVAL_DIAGNOSTIC is loaded."""
+    global UPDATE_INTERVAL_DIAGNOSTIC
+    if UPDATE_INTERVAL_DIAGNOSTIC is None:
+        UPDATE_INTERVAL_DIAGNOSTIC = get_diagnostic_update_interval()
 
 # Session level to role mapping (shared with CLI)
 SESSION_LEVEL_ROLES = {
@@ -77,72 +149,26 @@ VERY_SLOW_UPDATE_PATTERNS = [
     "sekund",
 ]
 
-# Diagnostic sensor configurations
-DIAGNOSTIC_SENSORS = {
-    "heap_available": {
-        "name": "Heap Memory Available",
-        "unit": "bytes",
-        "icon": "mdi:memory",
-        "device_class": None,
-        "state_class": "measurement",
-    },
-    "heap_used": {
-        "name": "Heap Memory Used",
-        "unit": "bytes",
-        "icon": "mdi:memory",
-        "device_class": None,
-        "state_class": "measurement",
-    },
-    "heap_max": {
-        "name": "Heap Memory Max Used",
-        "unit": "bytes",
-        "icon": "mdi:memory",
-        "device_class": None,
-        "state_class": "measurement",
-    },
-    "heap_errors": {
-        "name": "Heap Memory Errors",
-        "unit": "errors",
-        "icon": "mdi:alert-circle",
-        "device_class": None,
-        "state_class": "total_increasing",
-    },
-    "exoline_sessions_active": {
-        "name": "EXOline Active Sessions",
-        "unit": "sessions",
-        "icon": "mdi:connection",
-        "device_class": None,
-        "state_class": "measurement",
-    },
-    "external_connection": {
-        "name": "External Connection IP",
-        "unit": None,
-        "icon": "mdi:wan",
-        "device_class": None,
-        "state_class": None,
-    },
-    "modbus_sessions_active": {
-        "name": "Modbus Active Sessions",
-        "unit": "sessions",
-        "icon": "mdi:connection",
-        "device_class": None,
-        "state_class": "measurement",
-    },
-    "bacnet_version": {
-        "name": "BACnet Version",
-        "unit": None,
-        "icon": "mdi:information",
-        "device_class": None,
-        "state_class": None,
-    },
-    "bacnet_device_id": {
-        "name": "BACnet Device ID",
-        "unit": None,
-        "icon": "mdi:identifier",
-        "device_class": None,
-        "state_class": None,
-    },
-}
+def get_diagnostic_sensors() -> dict:
+    """Get diagnostic sensor configurations from pre-loaded config.
+    
+    Config is loaded at module import time to avoid blocking I/O in event loop.
+    
+    Returns:
+        Dictionary with diagnostic sensor configurations
+    """
+    return _DIAGNOSTIC_SENSORS_CACHE
+
+
+# Lazy-load diagnostic sensors (for backward compatibility)
+DIAGNOSTIC_SENSORS = None
+
+
+def _ensure_diagnostic_sensors_loaded():
+    """Ensure DIAGNOSTIC_SENSORS is loaded."""
+    global DIAGNOSTIC_SENSORS
+    if DIAGNOSTIC_SENSORS is None:
+        DIAGNOSTIC_SENSORS = get_diagnostic_sensors()
 
 # EXOsocket Error Codes
 ERROR_CODES = {
